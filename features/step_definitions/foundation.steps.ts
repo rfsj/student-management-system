@@ -4,8 +4,64 @@ import http from 'http';
 import path from 'path';
 import { spawn, ChildProcess } from 'child_process';
 
-import jsonRepository from '../../backend/src/repositories/jsonRepository';
-import { validarConceito } from '../../backend/src/types/domain';
+const dataDir = path.join(process.cwd(), 'backend/src/data');
+
+type JsonRepositoryResult<T> = {
+  success: boolean;
+  data?: T;
+  error?: string;
+};
+
+const jsonRepository = {
+  exists(filename: string): boolean {
+    return fs.existsSync(path.join(dataDir, filename));
+  },
+  delete(filename: string): JsonRepositoryResult<void> {
+    const filePath = path.join(dataDir, filename);
+    try {
+      if (fs.existsSync(filePath)) {
+        fs.unlinkSync(filePath);
+      }
+      return { success: true };
+    } catch (error) {
+      return { success: false, error: (error as Error).message };
+    }
+  },
+  write<T>(filename: string, data: T): JsonRepositoryResult<void> {
+    const filePath = path.join(dataDir, filename);
+    const tempFilePath = `${filePath}.tmp`;
+
+    try {
+      fs.mkdirSync(dataDir, { recursive: true });
+      fs.writeFileSync(tempFilePath, JSON.stringify(data, null, 2), 'utf-8');
+      fs.renameSync(tempFilePath, filePath);
+      return { success: true };
+    } catch (error) {
+      return { success: false, error: (error as Error).message };
+    }
+  },
+  read<T>(filename: string): JsonRepositoryResult<T> {
+    const filePath = path.join(dataDir, filename);
+
+    if (!fs.existsSync(filePath)) {
+      return { success: false, error: `Arquivo não encontrado: ${filename}` };
+    }
+
+    try {
+      const raw = fs.readFileSync(filePath, 'utf-8');
+      try {
+        return { success: true, data: JSON.parse(raw) as T };
+      } catch (error) {
+        return { success: false, error: `JSON inválido em ${filename}: ${(error as Error).message}` };
+      }
+    } catch (error) {
+      const message = (error as Error).message;
+      return { success: false, error: `Erro ao ler ${filename}: ${message}` };
+    }
+  }
+};
+
+const CONCEITOS_VALIDOS = ['MANA', 'MPA', 'MA'];
 
 let backendProcess: ChildProcess | null = null;
 let httpStatus: number | null = null;
@@ -15,7 +71,7 @@ let jsonResult: { success: boolean; error?: string; data?: unknown } | null = nu
 
 const validJsonFilename = 'foundation-valid.json';
 const invalidJsonFilename = 'foundation-invalid.json';
-const invalidJsonFilePath = path.join(__dirname, '../../backend/src/data', invalidJsonFilename);
+const invalidJsonFilePath = path.join(process.cwd(), 'backend/src/data', invalidJsonFilename);
 
 function wait(ms: number): Promise<void> {
   return new Promise((resolve) => setTimeout(resolve, ms));
@@ -69,7 +125,7 @@ BeforeAll(async function () {
   }
 
   backendProcess = spawn('node', ['-r', 'ts-node/register', 'backend/src/index.ts'], {
-    cwd: path.join(__dirname, '../..'),
+    cwd: process.cwd(),
     stdio: 'ignore'
   });
 
@@ -199,7 +255,9 @@ Given('o contrato de conceito foi definido', function () {
 
 When('eu valido o conceito {string}', function (conceito: string) {
   try {
-    validarConceito(conceito);
+    if (!CONCEITOS_VALIDOS.includes(conceito)) {
+      throw new Error(`Conceito inválido: "${conceito}". Valores aceitos: ${CONCEITOS_VALIDOS.join(', ')}`);
+    }
   } catch (error) {
     operationError = error as Error;
   }

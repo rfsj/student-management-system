@@ -1,9 +1,22 @@
 import { After, AfterAll, Before, BeforeAll, Given, Then, When } from '@cucumber/cucumber';
+import fs from 'fs';
 import http from 'http';
 import path from 'path';
 import { spawn, ChildProcess } from 'child_process';
 
-import jsonRepository from '../../backend/src/repositories/jsonRepository';
+const dataDir = path.join(process.cwd(), 'backend/src/data');
+
+const jsonRepository = {
+  exists(filename: string): boolean {
+    return fs.existsSync(path.join(dataDir, filename));
+  },
+  delete(filename: string): void {
+    const filePath = path.join(dataDir, filename);
+    if (fs.existsSync(filePath)) {
+      fs.unlinkSync(filePath);
+    }
+  }
+};
 
 type AlunoPayload = {
   id: string;
@@ -84,7 +97,7 @@ BeforeAll(async function () {
   }
 
   backendProcess = spawn('node', ['-r', 'ts-node/register', 'backend/src/index.ts'], {
-    cwd: path.join(__dirname, '../..'),
+    cwd: process.cwd(),
     stdio: 'ignore'
   });
   startedByThisFile = true;

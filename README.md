@@ -75,3 +75,23 @@ Endpoints de notificação:
 - Reprocessar pendências: `POST /notificacoes/reprocessar`
 - Listar pendências/enviados: `GET /notificacoes/pendencias?status=PENDENTE|ENVIADO`
 - Consultar log de envios: `GET /notificacoes/enviados?alunoId=<id>&data=YYYY-MM-DD`
+
+## Fechamento Final (Bloco 8)
+
+Checklist manual objetivo:
+
+- `GET /health` responde 200.
+- CRUD de alunos: criar, listar, editar, remover e validações de erro.
+- CRUD de turmas: criar, listar, editar, remover e validações de erro.
+- Matrículas: matricular, desmatricular, impedir duplicidade e consultar turma com alunos.
+- Avaliações por meta: lançar, alterar, bloquear conceito inválido e bloquear aluno fora da turma.
+- Consolidação diária: alterações no mesmo dia agrupadas por aluno e com dados de múltiplas turmas.
+- Notificações: gerar pendência, enviar no máximo 1 email por aluno/dia, manter pendente em falha e permitir reprocessamento.
+- Frontend: build executa com sucesso e integração básica com backend permanece funcional.
+
+Riscos residuais conhecidos:
+
+- Persistência em JSON não oferece transação ACID entre múltiplos arquivos.
+- Em ambiente concorrente, escritas simultâneas podem sobrescrever alterações sem lock distribuído.
+- Adaptador de email atual é fake; para produção é necessário substituir por provedor real com observabilidade.
+- Execução com Node muito novo pode emitir avisos de compatibilidade do Cucumber, mesmo com cenários passando.

@@ -25,7 +25,7 @@ interface JsonRepositoryResult<T> {
 class JsonRepository {
   private readonly dataDir: string;
 
-  constructor(dataDir: string = path.join(__dirname, '../data')) {
+  constructor(dataDir: string = path.join(process.cwd(), 'backend/src/data')) {
     this.dataDir = dataDir;
     this.ensureDataDirExists();
   }
@@ -214,4 +214,5 @@ class JsonRepository {
 const jsonRepository = new JsonRepository();
 
 export default jsonRepository;
-export { JsonRepository, JsonRepositoryResult };
+export { JsonRepository };
+export type { JsonRepositoryResult };
