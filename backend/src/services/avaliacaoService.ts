@@ -58,7 +58,8 @@ class AvaliacaoService {
     AVALIACAO_DUPLICADA: 'Avaliação já cadastrada para este aluno nesta meta e turma.',
     AVALIACAO_NOT_FOUND: 'Avaliação não encontrada.',
     PERSIST_CREATE: 'Falha ao persistir avaliação.',
-    PERSIST_UPDATE: 'Falha ao persistir alteração da avaliação.'
+    PERSIST_UPDATE: 'Falha ao persistir alteração da avaliação.',
+    PARTIAL_WRITE_ROLLBACK_FAILED: 'Falha ao registrar alteração e falha ao reverter escrita de avaliação.'
   };
 
   private static fail(error: string, status: 400 | 404 | 500): AvaliacaoFailResult {
@@ -109,6 +110,20 @@ class AvaliacaoService {
     } catch (_error) {
       return null;
     }
+  }
+
+  private static rollbackCreate(avaliacoes: DataContainer<Avaliacao>, avaliacaoId: string): boolean {
+    avaliacoes.itens = avaliacoes.itens.filter((item) => item.id !== avaliacaoId);
+    return AvaliacaoService.saveAvaliacaoContainer(avaliacoes);
+  }
+
+  private static rollbackUpdate(
+    avaliacoes: DataContainer<Avaliacao>,
+    index: number,
+    anterior: Avaliacao
+  ): boolean {
+    avaliacoes.itens[index] = anterior;
+    return AvaliacaoService.saveAvaliacaoContainer(avaliacoes);
   }
 
   static lancar(input: LancarAvaliacaoInput): AvaliacaoSuccessResult | AvaliacaoFailResult {
@@ -182,7 +197,12 @@ class AvaliacaoService {
     });
 
     if (!registro.success) {
-      return AvaliacaoService.fail(registro.error, 500);
+      const rollbackOk = AvaliacaoService.rollbackCreate(avaliacoes, novaAvaliacao.id);
+      const error = rollbackOk
+        ? registro.error
+        : `${registro.error} ${AvaliacaoService.MESSAGES.PARTIAL_WRITE_ROLLBACK_FAILED}`;
+
+      return AvaliacaoService.fail(error, 500);
     }
 
     return { success: true, avaliacao: novaAvaliacao };
@@ -202,6 +222,7 @@ class AvaliacaoService {
     }
 
     const atual = avaliacoes.itens[index];
+    const houveMudancaConceito = atual.conceito !== conceito;
     const atualizado: Avaliacao = {
       ...atual,
       conceito,
@@ -221,6 +242,10 @@ class AvaliacaoService {
       return AvaliacaoService.fail(AvaliacaoService.MESSAGES.PERSIST_UPDATE, 500);
     }
 
+    if (!houveMudancaConceito) {
+      return { success: true, avaliacao: atualizado };
+    }
+
     const registro = ConsolidacaoService.registrarAlteracao({
       avaliacaoId: atualizado.id,
       alunoId: atualizado.alunoId,
@@ -231,7 +256,12 @@ class AvaliacaoService {
     });
 
     if (!registro.success) {
-      return AvaliacaoService.fail(registro.error, 500);
+      const rollbackOk = AvaliacaoService.rollbackUpdate(avaliacoes, index, atual);
+      const error = rollbackOk
+        ? registro.error
+        : `${registro.error} ${AvaliacaoService.MESSAGES.PARTIAL_WRITE_ROLLBACK_FAILED}`;
+
+      return AvaliacaoService.fail(error, 500);
     }
 
     return { success: true, avaliacao: atualizado };

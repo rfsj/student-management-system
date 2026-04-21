@@ -34,6 +34,8 @@ type ConsultaConsolidacaoResult = {
   itens: ConsolidadoDiario[];
 };
 
+type ChaveAgrupamento = `${string}::${string}`;
+
 class ConsolidacaoService {
   private static readonly ALTERACOES_FILE = 'alteracoes-avaliacoes.json';
   private static readonly CONSOLIDACOES_FILE = 'consolidacoes-avaliacoes.json';
@@ -49,6 +51,15 @@ class ConsolidacaoService {
 
   private static dateOnly(isoDate: string): string {
     return isoDate.slice(0, 10);
+  }
+
+  private static criarChaveAgrupamento(alunoId: string, dataSimples: string): ChaveAgrupamento {
+    return `${alunoId}::${dataSimples}`;
+  }
+
+  private static separarChaveAgrupamento(chave: ChaveAgrupamento): { alunoId: string; dataSimples: string } {
+    const [alunoId, dataSimples] = chave.split('::');
+    return { alunoId, dataSimples };
   }
 
   private static loadAlteracoesContainer(): DataContainer<AlteracaoDeAvaliacao> {
@@ -77,42 +88,48 @@ class ConsolidacaoService {
     return jsonRepository.write(ConsolidacaoService.CONSOLIDACOES_FILE, container).success;
   }
 
-  private static atualizarConsolidadoAlunoDia(alunoId: string, dataSimples: string): ConsolidacaoSuccessResult | ConsolidacaoFailResult {
-    const alteracoesContainer = ConsolidacaoService.loadAlteracoesContainer();
+  private static construirConsolidados(
+    alteracoes: AlteracaoDeAvaliacao[]
+  ): ConsolidadoDiario[] {
+    const agrupadas = new Map<ChaveAgrupamento, AlteracaoDeAvaliacao[]>();
+
+    alteracoes.forEach((item) => {
+      const chave = ConsolidacaoService.criarChaveAgrupamento(item.alunoId, item.dataSimples);
+      const atual = agrupadas.get(chave) ?? [];
+      atual.push(item);
+      agrupadas.set(chave, atual);
+    });
+
+    const consolidados: ConsolidadoDiario[] = [];
+
+    agrupadas.forEach((itens, chave) => {
+      const { alunoId, dataSimples } = ConsolidacaoService.separarChaveAgrupamento(chave);
+
+      const consolidado: ConsolidadoDiario = {
+        id: randomUUID(),
+        alunoId,
+        dataSimples,
+        dataGeracao: new Date().toISOString(),
+        alteracoes: [...itens].sort((a, b) => a.data.localeCompare(b.data))
+      };
+
+      validarConsolidadoDiario(consolidado);
+      consolidados.push(consolidado);
+    });
+
+    return consolidados;
+  }
+
+  private static persistirConsolidados(
+    alteracoes: AlteracaoDeAvaliacao[]
+  ): ConsolidacaoSuccessResult | ConsolidacaoFailResult {
     const consolidacoesContainer = ConsolidacaoService.loadConsolidacoesContainer();
 
-    const alteracoesDoDia = alteracoesContainer.itens
-      .filter((item) => item.alunoId === alunoId && item.dataSimples === dataSimples)
-      .sort((a, b) => a.data.localeCompare(b.data));
-
-    const existentes = consolidacoesContainer.itens.filter(
-      (item) => !(item.alunoId === alunoId && item.dataSimples === dataSimples)
-    );
-
-    if (alteracoesDoDia.length === 0) {
-      consolidacoesContainer.itens = existentes;
-      if (!ConsolidacaoService.saveConsolidacoesContainer(consolidacoesContainer)) {
-        return ConsolidacaoService.fail(ConsolidacaoService.MESSAGES.PERSIST_CONSOLIDACAO, 500);
-      }
-
-      return { success: true };
-    }
-
-    const consolidado: ConsolidadoDiario = {
-      id: randomUUID(),
-      alunoId,
-      dataSimples,
-      dataGeracao: new Date().toISOString(),
-      alteracoes: alteracoesDoDia
-    };
-
     try {
-      validarConsolidadoDiario(consolidado);
+      consolidacoesContainer.itens = ConsolidacaoService.construirConsolidados(alteracoes);
     } catch (error) {
       return ConsolidacaoService.fail((error as Error).message, 400);
     }
-
-    consolidacoesContainer.itens = [...existentes, consolidado];
 
     if (!ConsolidacaoService.saveConsolidacoesContainer(consolidacoesContainer)) {
       return ConsolidacaoService.fail(ConsolidacaoService.MESSAGES.PERSIST_CONSOLIDACAO, 500);
@@ -150,45 +167,12 @@ class ConsolidacaoService {
       return ConsolidacaoService.fail(ConsolidacaoService.MESSAGES.PERSIST_ALTERACAO, 500);
     }
 
-    return ConsolidacaoService.atualizarConsolidadoAlunoDia(input.alunoId, dataSimples);
+    return ConsolidacaoService.persistirConsolidados(alteracoesContainer.itens);
   }
 
   static reprocessarTudo(): ConsolidacaoSuccessResult | ConsolidacaoFailResult {
     const alteracoesContainer = ConsolidacaoService.loadAlteracoesContainer();
-    const consolidacoesContainer = ConsolidacaoService.loadConsolidacoesContainer();
-
-    const agrupadas = new Map<string, AlteracaoDeAvaliacao[]>();
-
-    alteracoesContainer.itens.forEach((item) => {
-      const chave = `${item.alunoId}::${item.dataSimples}`;
-      const atual = agrupadas.get(chave) ?? [];
-      atual.push(item);
-      agrupadas.set(chave, atual);
-    });
-
-    const novosConsolidados: ConsolidadoDiario[] = [];
-
-    agrupadas.forEach((alteracoes, chave) => {
-      const [alunoId, dataSimples] = chave.split('::');
-      const consolidado: ConsolidadoDiario = {
-        id: randomUUID(),
-        alunoId,
-        dataSimples,
-        dataGeracao: new Date().toISOString(),
-        alteracoes: [...alteracoes].sort((a, b) => a.data.localeCompare(b.data))
-      };
-
-      validarConsolidadoDiario(consolidado);
-      novosConsolidados.push(consolidado);
-    });
-
-    consolidacoesContainer.itens = novosConsolidados;
-
-    if (!ConsolidacaoService.saveConsolidacoesContainer(consolidacoesContainer)) {
-      return ConsolidacaoService.fail(ConsolidacaoService.MESSAGES.PERSIST_CONSOLIDACAO, 500);
-    }
-
-    return { success: true };
+    return ConsolidacaoService.persistirConsolidados(alteracoesContainer.itens);
   }
 
   static consultarPorAluno(alunoId: string): ConsultaConsolidacaoResult {
