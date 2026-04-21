@@ -178,6 +178,17 @@ interface AlteracaoDeAvaliacao {
 }
 
 /**
+ * Consolidado diário de alterações por aluno
+ */
+interface ConsolidadoDiario {
+  id: string;
+  alunoId: string;
+  dataSimples: string;
+  dataGeracao: string;
+  alteracoes: AlteracaoDeAvaliacao[];
+}
+
+/**
  * Validador de AlteracaoDeAvaliacao
  */
 function validarAlteracaoDeAvaliacao(alteracao: any): asserts alteracao is AlteracaoDeAvaliacao {
@@ -210,6 +221,26 @@ function validarAlteracaoDeAvaliacao(alteracao: any): asserts alteracao is Alter
   }
 }
 
+function validarConsolidadoDiario(consolidado: any): asserts consolidado is ConsolidadoDiario {
+  if (!consolidado.id || typeof consolidado.id !== 'string' || consolidado.id.trim() === '') {
+    throw new Error('ConsolidadoDiario.id é obrigatório e deve ser uma string não-vazia');
+  }
+  if (!consolidado.alunoId || typeof consolidado.alunoId !== 'string' || consolidado.alunoId.trim() === '') {
+    throw new Error('ConsolidadoDiario.alunoId é obrigatório e deve ser uma string não-vazia');
+  }
+  if (!consolidado.dataSimples || typeof consolidado.dataSimples !== 'string') {
+    throw new Error('ConsolidadoDiario.dataSimples é obrigatório (formato: YYYY-MM-DD)');
+  }
+  if (!consolidado.dataGeracao || typeof consolidado.dataGeracao !== 'string') {
+    throw new Error('ConsolidadoDiario.dataGeracao é obrigatório e deve ser uma string (ISO)');
+  }
+  if (!Array.isArray(consolidado.alteracoes)) {
+    throw new Error('ConsolidadoDiario.alteracoes deve ser uma lista');
+  }
+
+  consolidado.alteracoes.forEach((alteracao: unknown) => validarAlteracaoDeAvaliacao(alteracao));
+}
+
 /**
  * Container para armazenar todas as entidades
  * Cada arquivo JSON terá uma dessas estruturas
@@ -234,5 +265,7 @@ export {
   validarAvaliacao,
   AlteracaoDeAvaliacao,
   validarAlteracaoDeAvaliacao,
+  ConsolidadoDiario,
+  validarConsolidadoDiario,
   DataContainer
 };

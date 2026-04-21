@@ -10,6 +10,7 @@ import {
   validarAvaliacao,
   validarConceito
 } from '../types/domain';
+import ConsolidacaoService from './consolidacaoService';
 
 interface LancarAvaliacaoInput {
   turmaId: string;
@@ -172,6 +173,18 @@ class AvaliacaoService {
       return AvaliacaoService.fail(AvaliacaoService.MESSAGES.PERSIST_CREATE, 500);
     }
 
+    const registro = ConsolidacaoService.registrarAlteracao({
+      avaliacaoId: novaAvaliacao.id,
+      alunoId: novaAvaliacao.alunoId,
+      turmaId: novaAvaliacao.turmaId,
+      metaId: novaAvaliacao.metaId,
+      novoValor: novaAvaliacao.conceito
+    });
+
+    if (!registro.success) {
+      return AvaliacaoService.fail(registro.error, 500);
+    }
+
     return { success: true, avaliacao: novaAvaliacao };
   }
 
@@ -206,6 +219,19 @@ class AvaliacaoService {
 
     if (!AvaliacaoService.saveAvaliacaoContainer(avaliacoes)) {
       return AvaliacaoService.fail(AvaliacaoService.MESSAGES.PERSIST_UPDATE, 500);
+    }
+
+    const registro = ConsolidacaoService.registrarAlteracao({
+      avaliacaoId: atualizado.id,
+      alunoId: atualizado.alunoId,
+      turmaId: atualizado.turmaId,
+      metaId: atualizado.metaId,
+      valorAnterior: atual.conceito,
+      novoValor: atualizado.conceito
+    });
+
+    if (!registro.success) {
+      return AvaliacaoService.fail(registro.error, 500);
     }
 
     return { success: true, avaliacao: atualizado };

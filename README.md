@@ -39,3 +39,17 @@ Contratos de avaliação:
 - Lançamento: `POST /avaliacoes` com `turmaId`, `alunoId`, `metaId` e `conceito`.
 - Alteração: `PUT /avaliacoes/:id` com novo `conceito`.
 - Visualização por turma: `GET /turmas/:id/avaliacoes` com alunos, metas e avaliações da turma.
+
+## Consolidacao Diaria de Alteracoes (Bloco 6)
+
+Regras de consolidação:
+
+- Toda criação ou alteração de avaliação gera um evento em `alteracoes-avaliacoes.json`.
+- Eventos são agrupados por `alunoId` + `dataSimples` (YYYY-MM-DD).
+- O consolidado diário é persistido em `consolidacoes-avaliacoes.json` e reúne alterações de todas as turmas do aluno no dia.
+
+Endpoints de consolidação:
+
+- Reprocessar consolidação completa: `POST /consolidacoes/reprocessar`
+- Consultar consolidado por aluno: `GET /consolidacoes/alunos/:alunoId`
+- Consultar consolidado por aluno e dia: `GET /consolidacoes/alunos/:alunoId?data=YYYY-MM-DD`

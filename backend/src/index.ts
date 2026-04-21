@@ -4,6 +4,7 @@ import alunoRoutes from './routes/alunoRoutes';
 import turmaRoutes from './routes/turmaRoutes';
 import metaRoutes from './routes/metaRoutes';
 import avaliacaoRoutes from './routes/avaliacaoRoutes';
+import consolidacaoRoutes from './routes/consolidacaoRoutes';
 
 const app = express();
 const PORT = 3000;
@@ -37,6 +38,9 @@ app.use('/metas', metaRoutes);
 
 // Avaliacoes
 app.use('/avaliacoes', avaliacaoRoutes);
+
+// Consolidacao de alteracoes
+app.use('/consolidacoes', consolidacaoRoutes);
 
 // Start server
 app.listen(PORT, () => {
