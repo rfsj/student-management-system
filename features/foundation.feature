@@ -23,7 +23,7 @@ Feature: Aceitacao da fundacao
     Given o modulo de persistencia foi inicializado
     When eu leio um arquivo JSON inexistente
     Then a leitura JSON deve falhar
-    And a mensagem de erro deve conter "Arquivo nao encontrado"
+    And a mensagem de erro deve conter "Arquivo não encontrado"
 
   Scenario: JSON valido nao gera erro de parse
     Given o modulo de persistencia foi inicializado
@@ -34,7 +34,7 @@ Feature: Aceitacao da fundacao
     Given eu tenho um arquivo JSON invalido
     When eu leio o arquivo JSON invalido
     Then a leitura JSON deve falhar
-    And a mensagem de erro deve conter "JSON invalido"
+    And a mensagem de erro deve conter "JSON inválido"
 
   Scenario: Conceito valido e aceito
     Given o contrato de conceito foi definido
@@ -45,4 +45,4 @@ Feature: Aceitacao da fundacao
     Given o contrato de conceito foi definido
     When eu valido o conceito "INVALIDO"
     Then a validacao de conceito deve falhar
-    And a mensagem de erro deve conter "Conceito invalido"
+    And a mensagem de erro deve conter "Conceito inválido"
