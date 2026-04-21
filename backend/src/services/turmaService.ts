@@ -1,6 +1,7 @@
 import { randomUUID } from 'crypto';
 import jsonRepository from '../repositories/jsonRepository';
 import { DataContainer, Turma, validarTurma } from '../types/domain';
+import { hasMeaningfulUpdate, sanitizeOptionalText } from './crudHelpers';
 
 interface CriarTurmaInput {
   nome: string;
@@ -56,7 +57,7 @@ class TurmaService {
     const novaTurma: Turma = {
       id: randomUUID(),
       nome: input.nome.trim(),
-      descricao: input.descricao?.trim() || undefined,
+      descricao: sanitizeOptionalText(input.descricao),
       dataCriacao: agora,
       dataAtualizacao: agora
     };
@@ -81,7 +82,7 @@ class TurmaService {
     id: string,
     input: AtualizarTurmaInput
   ): { success: boolean; turma?: Turma; error?: string; notFound?: boolean } {
-    if ((!input.nome || input.nome.trim() === '') && input.descricao === undefined) {
+    if (!hasMeaningfulUpdate([input.nome, input.descricao])) {
       return TurmaService.fail(TurmaService.MESSAGES.UPDATE_AT_LEAST_ONE);
     }
 
@@ -96,7 +97,7 @@ class TurmaService {
     const atualizado: Turma = {
       ...atual,
       nome: input.nome !== undefined ? input.nome.trim() : atual.nome,
-      descricao: input.descricao !== undefined ? input.descricao.trim() || undefined : atual.descricao,
+      descricao: sanitizeOptionalText(input.descricao) ?? atual.descricao,
       dataAtualizacao: new Date().toISOString()
     };
 

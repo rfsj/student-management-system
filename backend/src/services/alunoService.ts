@@ -1,6 +1,7 @@
 import { randomUUID } from 'crypto';
 import jsonRepository from '../repositories/jsonRepository';
 import { Aluno, DataContainer, validarAluno } from '../types/domain';
+import { hasMeaningfulUpdate, sanitizeOptionalText } from './crudHelpers';
 
 interface CriarAlunoInput {
   nome: string;
@@ -56,7 +57,7 @@ class AlunoService {
     const novoAluno: Aluno = {
       id: randomUUID(),
       nome: input.nome.trim(),
-      email: input.email?.trim() || undefined,
+      email: sanitizeOptionalText(input.email),
       dataCriacao: agora,
       dataAtualizacao: agora
     };
@@ -81,7 +82,7 @@ class AlunoService {
     id: string,
     input: AtualizarAlunoInput
   ): { success: boolean; aluno?: Aluno; error?: string; notFound?: boolean } {
-    if ((!input.nome || input.nome.trim() === '') && input.email === undefined) {
+    if (!hasMeaningfulUpdate([input.nome, input.email])) {
       return AlunoService.fail(AlunoService.MESSAGES.UPDATE_AT_LEAST_ONE);
     }
 
@@ -96,7 +97,7 @@ class AlunoService {
     const atualizado: Aluno = {
       ...atual,
       nome: input.nome !== undefined ? input.nome.trim() : atual.nome,
-      email: input.email !== undefined ? input.email.trim() || undefined : atual.email,
+      email: sanitizeOptionalText(input.email) ?? atual.email,
       dataAtualizacao: new Date().toISOString()
     };
 
