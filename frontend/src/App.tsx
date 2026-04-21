@@ -12,8 +12,14 @@ type Turma = {
   id: string;
   nome: string;
   descricao?: string;
+  alunoIds?: string[];
   dataCriacao: string;
   dataAtualizacao: string;
+};
+
+type TurmaComAlunosResponse = {
+  turma: Turma;
+  alunos: Aluno[];
 };
 
 type AlunoFormState = {
@@ -37,6 +43,8 @@ function App() {
   const [turmaForm, setTurmaForm] = useState<TurmaFormState>({ nome: '', descricao: '' });
   const [editingAlunoId, setEditingAlunoId] = useState<string | null>(null);
   const [editingTurmaId, setEditingTurmaId] = useState<string | null>(null);
+  const [alunosPorTurma, setAlunosPorTurma] = useState<Record<string, Aluno[]>>({});
+  const [alunoSelecionadoPorTurma, setAlunoSelecionadoPorTurma] = useState<Record<string, string>>({});
   const [erroAlunos, setErroAlunos] = useState<string>('');
   const [erroTurmas, setErroTurmas] = useState<string>('');
   const [carregandoAlunos, setCarregandoAlunos] = useState<boolean>(false);
@@ -69,6 +77,25 @@ function App() {
       }
       const data = (await response.json()) as Turma[];
       setTurmas(data);
+
+      const detalhes = await Promise.all(
+        data.map(async (turma) => {
+          const detalheResponse = await fetch(`${TURMA_API_BASE}/${turma.id}/alunos`);
+          if (!detalheResponse.ok) {
+            throw new Error('Falha ao carregar alunos vinculados por turma.');
+          }
+
+          const detalhe = (await detalheResponse.json()) as TurmaComAlunosResponse;
+          return { turmaId: turma.id, alunos: detalhe.alunos };
+        })
+      );
+
+      const alunosMapeados = detalhes.reduce<Record<string, Aluno[]>>((accumulator, item) => {
+        accumulator[item.turmaId] = item.alunos;
+        return accumulator;
+      }, {});
+
+      setAlunosPorTurma(alunosMapeados);
     } catch (error) {
       setErroTurmas((error as Error).message);
     } finally {
@@ -191,6 +218,54 @@ function App() {
     }
   }
 
+  function atualizarAlunoSelecionadoTurma(turmaId: string, alunoId: string): void {
+    setAlunoSelecionadoPorTurma((previous) => ({ ...previous, [turmaId]: alunoId }));
+  }
+
+  function obterAlunosDisponiveis(turmaId: string): Aluno[] {
+    const matriculados = new Set((alunosPorTurma[turmaId] ?? []).map((aluno) => aluno.id));
+    return alunos.filter((aluno) => !matriculados.has(aluno.id));
+  }
+
+  async function matricularAlunoNaTurma(turmaId: string): Promise<void> {
+    const alunoId = alunoSelecionadoPorTurma[turmaId];
+    if (!alunoId) {
+      setErroTurmas('Selecione um aluno para matricular.');
+      return;
+    }
+
+    setErroTurmas('');
+
+    try {
+      const response = await fetch(`${TURMA_API_BASE}/${turmaId}/alunos/${alunoId}`, { method: 'POST' });
+      if (!response.ok) {
+        const body = (await response.json()) as { error?: string };
+        throw new Error(body.error || 'Falha ao matricular aluno na turma.');
+      }
+
+      await carregarTurmas();
+      setAlunoSelecionadoPorTurma((previous) => ({ ...previous, [turmaId]: '' }));
+    } catch (error) {
+      setErroTurmas((error as Error).message);
+    }
+  }
+
+  async function desmatricularAlunoDaTurma(turmaId: string, alunoId: string): Promise<void> {
+    setErroTurmas('');
+
+    try {
+      const response = await fetch(`${TURMA_API_BASE}/${turmaId}/alunos/${alunoId}`, { method: 'DELETE' });
+      if (!response.ok) {
+        const body = (await response.json()) as { error?: string };
+        throw new Error(body.error || 'Falha ao remover matrícula.');
+      }
+
+      await carregarTurmas();
+    } catch (error) {
+      setErroTurmas((error as Error).message);
+    }
+  }
+
   return (
     <main className="container">
       <h1>Gestão Escolar</h1>
@@ -305,36 +380,87 @@ function App() {
         {carregandoTurmas ? (
           <p>Carregando turmas...</p>
         ) : (
-          <table>
-            <thead>
-              <tr>
-                <th>Nome</th>
-                <th>Descrição</th>
-                <th>Ações</th>
-              </tr>
-            </thead>
-            <tbody>
-              {turmas.map((turma) => (
-                <tr key={turma.id}>
-                  <td>{turma.nome}</td>
-                  <td>{turma.descricao || '-'}</td>
-                  <td className="row-actions">
-                    <button type="button" className="secondary" onClick={() => iniciarEdicaoTurma(turma)}>
-                      Editar
-                    </button>
-                    <button type="button" className="danger" onClick={() => void removerTurma(turma.id)}>
-                      Remover
-                    </button>
-                  </td>
-                </tr>
-              ))}
-              {turmas.length === 0 && (
+          <>
+            <table>
+              <thead>
                 <tr>
-                  <td colSpan={3}>Nenhuma turma cadastrada.</td>
+                  <th>Nome</th>
+                  <th>Descrição</th>
+                  <th>Matriculados</th>
+                  <th>Ações</th>
                 </tr>
-              )}
-            </tbody>
-          </table>
+              </thead>
+              <tbody>
+                {turmas.map((turma) => (
+                  <tr key={turma.id}>
+                    <td>{turma.nome}</td>
+                    <td>{turma.descricao || '-'}</td>
+                    <td>{(alunosPorTurma[turma.id] ?? []).length}</td>
+                    <td className="row-actions">
+                      <button type="button" className="secondary" onClick={() => iniciarEdicaoTurma(turma)}>
+                        Editar
+                      </button>
+                      <button type="button" className="danger" onClick={() => void removerTurma(turma.id)}>
+                        Remover
+                      </button>
+                    </td>
+                  </tr>
+                ))}
+                {turmas.length === 0 && (
+                  <tr>
+                    <td colSpan={4}>Nenhuma turma cadastrada.</td>
+                  </tr>
+                )}
+              </tbody>
+            </table>
+
+            <div className="turmas-vinculos">
+              {turmas.map((turma) => {
+                const disponiveis = obterAlunosDisponiveis(turma.id);
+                const alunosMatriculados = alunosPorTurma[turma.id] ?? [];
+
+                return (
+                  <article className="turma-vinculo-card" key={`vinculo-${turma.id}`}>
+                    <h3>{turma.nome}</h3>
+
+                    <div className="matricula-form">
+                      <select
+                        value={alunoSelecionadoPorTurma[turma.id] ?? ''}
+                        onChange={(event) => atualizarAlunoSelecionadoTurma(turma.id, event.target.value)}
+                      >
+                        <option value="">Selecione um aluno</option>
+                        {disponiveis.map((aluno) => (
+                          <option key={aluno.id} value={aluno.id}>
+                            {aluno.nome}
+                          </option>
+                        ))}
+                      </select>
+                      <button type="button" onClick={() => void matricularAlunoNaTurma(turma.id)}>
+                        Matricular
+                      </button>
+                    </div>
+
+                    <ul className="matriculados-lista">
+                      {alunosMatriculados.map((aluno) => (
+                        <li key={`${turma.id}-${aluno.id}`}>
+                          <span>{aluno.nome}</span>
+                          <button
+                            type="button"
+                            className="danger"
+                            onClick={() => void desmatricularAlunoDaTurma(turma.id, aluno.id)}
+                          >
+                            Remover matrícula
+                          </button>
+                        </li>
+                      ))}
+
+                      {alunosMatriculados.length === 0 && <li>Nenhum aluno matriculado nesta turma.</li>}
+                    </ul>
+                  </article>
+                );
+              })}
+            </div>
+          </>
         )}
       </section>
     </main>

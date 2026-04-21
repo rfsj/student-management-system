@@ -65,6 +65,7 @@ interface Turma {
   id: string;
   nome: string;
   descricao?: string;
+  alunoIds?: string[];
   dataCriacao: string;
   dataAtualizacao: string;
 }
@@ -84,6 +85,11 @@ function validarTurma(turma: any): asserts turma is Turma {
   }
   if (!turma.dataAtualizacao || typeof turma.dataAtualizacao !== 'string') {
     throw new Error('Turma.dataAtualizacao é obrigatório e deve ser uma string (ISO)');
+  }
+  if (turma.alunoIds !== undefined) {
+    if (!Array.isArray(turma.alunoIds) || turma.alunoIds.some((id: unknown) => typeof id !== 'string')) {
+      throw new Error('Turma.alunoIds deve ser uma lista de strings');
+    }
   }
 }
 

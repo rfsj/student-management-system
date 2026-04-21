@@ -58,6 +58,7 @@ class TurmaService {
       id: randomUUID(),
       nome: input.nome.trim(),
       descricao: sanitizeOptionalText(input.descricao),
+      alunoIds: [],
       dataCriacao: agora,
       dataAtualizacao: agora
     };
@@ -98,6 +99,7 @@ class TurmaService {
       ...atual,
       nome: input.nome !== undefined ? input.nome.trim() : atual.nome,
       descricao: sanitizeOptionalText(input.descricao) ?? atual.descricao,
+      alunoIds: atual.alunoIds ?? [],
       dataAtualizacao: new Date().toISOString()
     };
 

@@ -13,6 +13,7 @@ Siga estas regras sem exceção, a menos que o usuário mande explicitamente mud
 - Backend em Node com TypeScript
 - Persistência em JSON
 - Testes de aceitação com Cucumber + Gherkin
+- Utilize docker como padrão
 - O sistema deve contemplar:
   - CRUD de alunos
   - listagem de alunos

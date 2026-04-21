@@ -1,5 +1,6 @@
 import { Request, Response } from 'express';
 import TurmaService from '../services/turmaService';
+import MatriculaService from '../services/matriculaService';
 
 class TurmaController {
   private static sendError(res: Response, status: number, error?: string): void {
@@ -56,6 +57,42 @@ class TurmaController {
     }
 
     res.status(204).send();
+  }
+
+  static matricular(req: Request, res: Response): void {
+    const { id: turmaId, alunoId } = req.params;
+    const result = MatriculaService.matricular(alunoId, turmaId);
+
+    if (!result.success) {
+      TurmaController.sendError(res, result.status, result.error);
+      return;
+    }
+
+    res.status(200).json(result.turma);
+  }
+
+  static desmatricular(req: Request, res: Response): void {
+    const { id: turmaId, alunoId } = req.params;
+    const result = MatriculaService.desmatricular(alunoId, turmaId);
+
+    if (!result.success) {
+      TurmaController.sendError(res, result.status, result.error);
+      return;
+    }
+
+    res.status(200).json(result.turma);
+  }
+
+  static visualizarComAlunos(req: Request, res: Response): void {
+    const { id: turmaId } = req.params;
+    const result = MatriculaService.visualizarTurmaComAlunos(turmaId);
+
+    if (!result.success) {
+      TurmaController.sendError(res, result.status, result.error);
+      return;
+    }
+
+    res.status(200).json({ turma: result.turma, alunos: result.alunos });
   }
 }
 
