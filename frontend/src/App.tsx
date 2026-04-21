@@ -12,14 +12,35 @@ type Turma = {
   id: string;
   nome: string;
   descricao?: string;
-  alunoIds?: string[];
+  alunoIds: string[];
   dataCriacao: string;
   dataAtualizacao: string;
 };
 
-type TurmaComAlunosResponse = {
+type Meta = {
+  id: string;
+  nome: string;
+  descricao?: string;
+};
+
+type Conceito = 'MANA' | 'MPA' | 'MA';
+
+type Avaliacao = {
+  id: string;
+  alunoId: string;
+  turmaId: string;
+  metaId: string;
+  conceito: Conceito;
+  notas?: string;
+  dataCriacao: string;
+  dataAtualizacao: string;
+};
+
+type TurmaComAvaliacoesResponse = {
   turma: Turma;
   alunos: Aluno[];
+  metas: Meta[];
+  avaliacoes: Avaliacao[];
 };
 
 type AlunoFormState = {
@@ -35,6 +56,8 @@ type TurmaFormState = {
 const API_BASE_URL = import.meta.env.VITE_API_BASE_URL ?? 'http://localhost:3000';
 const ALUNO_API_BASE = `${API_BASE_URL}/alunos`;
 const TURMA_API_BASE = `${API_BASE_URL}/turmas`;
+const META_API_BASE = `${API_BASE_URL}/metas`;
+const AVALIACAO_API_BASE = `${API_BASE_URL}/avaliacoes`;
 
 function App() {
   const [alunos, setAlunos] = useState<Aluno[]>([]);
@@ -44,7 +67,10 @@ function App() {
   const [editingAlunoId, setEditingAlunoId] = useState<string | null>(null);
   const [editingTurmaId, setEditingTurmaId] = useState<string | null>(null);
   const [alunosPorTurma, setAlunosPorTurma] = useState<Record<string, Aluno[]>>({});
+  const [avaliacoesPorTurma, setAvaliacoesPorTurma] = useState<Record<string, Avaliacao[]>>({});
+  const [metas, setMetas] = useState<Meta[]>([]);
   const [alunoSelecionadoPorTurma, setAlunoSelecionadoPorTurma] = useState<Record<string, string>>({});
+  const [conceitoSelecionadoPorCelula, setConceitoSelecionadoPorCelula] = useState<Record<string, string>>({});
   const [erroAlunos, setErroAlunos] = useState<string>('');
   const [erroTurmas, setErroTurmas] = useState<string>('');
   const [carregandoAlunos, setCarregandoAlunos] = useState<boolean>(false);
@@ -67,6 +93,20 @@ function App() {
     }
   }
 
+  async function carregarMetas(): Promise<void> {
+    try {
+      const response = await fetch(META_API_BASE);
+      if (!response.ok) {
+        throw new Error('Falha ao listar metas.');
+      }
+
+      const data = (await response.json()) as Meta[];
+      setMetas(data);
+    } catch (error) {
+      setErroTurmas((error as Error).message);
+    }
+  }
+
   async function carregarTurmas(): Promise<void> {
     setCarregandoTurmas(true);
     setErroTurmas('');
@@ -80,13 +120,17 @@ function App() {
 
       const detalhes = await Promise.all(
         data.map(async (turma) => {
-          const detalheResponse = await fetch(`${TURMA_API_BASE}/${turma.id}/alunos`);
+          const detalheResponse = await fetch(`${TURMA_API_BASE}/${turma.id}/avaliacoes`);
           if (!detalheResponse.ok) {
-            throw new Error('Falha ao carregar alunos vinculados por turma.');
+            throw new Error('Falha ao carregar avaliações da turma.');
           }
 
-          const detalhe = (await detalheResponse.json()) as TurmaComAlunosResponse;
-          return { turmaId: turma.id, alunos: detalhe.alunos };
+          const detalhe = (await detalheResponse.json()) as TurmaComAvaliacoesResponse;
+          return {
+            turmaId: turma.id,
+            alunos: detalhe.alunos,
+            avaliacoes: detalhe.avaliacoes
+          };
         })
       );
 
@@ -95,7 +139,13 @@ function App() {
         return accumulator;
       }, {});
 
+      const avaliacoesMapeadas = detalhes.reduce<Record<string, Avaliacao[]>>((accumulator, item) => {
+        accumulator[item.turmaId] = item.avaliacoes;
+        return accumulator;
+      }, {});
+
       setAlunosPorTurma(alunosMapeados);
+      setAvaliacoesPorTurma(avaliacoesMapeadas);
     } catch (error) {
       setErroTurmas((error as Error).message);
     } finally {
@@ -105,8 +155,35 @@ function App() {
 
   useEffect(() => {
     void carregarAlunos();
+    void carregarMetas();
     void carregarTurmas();
   }, []);
+
+  function chaveCelulaAvaliacao(turmaId: string, alunoId: string, metaId: string): string {
+    return `${turmaId}::${alunoId}::${metaId}`;
+  }
+
+  function buscarAvaliacao(turmaId: string, alunoId: string, metaId: string): Avaliacao | undefined {
+    return (avaliacoesPorTurma[turmaId] ?? []).find(
+      (avaliacao) => avaliacao.alunoId === alunoId && avaliacao.metaId === metaId
+    );
+  }
+
+  function conceitoSelecionado(turmaId: string, alunoId: string, metaId: string): string {
+    const chave = chaveCelulaAvaliacao(turmaId, alunoId, metaId);
+    const selecionado = conceitoSelecionadoPorCelula[chave];
+    if (selecionado) {
+      return selecionado;
+    }
+
+    const existente = buscarAvaliacao(turmaId, alunoId, metaId);
+    return existente?.conceito ?? '';
+  }
+
+  function atualizarConceitoSelecionado(turmaId: string, alunoId: string, metaId: string, conceito: string): void {
+    const chave = chaveCelulaAvaliacao(turmaId, alunoId, metaId);
+    setConceitoSelecionadoPorCelula((previous) => ({ ...previous, [chave]: conceito }));
+  }
 
   function limparFormularioAluno(): void {
     setAlunoForm({ nome: '', email: '' });
@@ -258,6 +335,46 @@ function App() {
       if (!response.ok) {
         const body = (await response.json()) as { error?: string };
         throw new Error(body.error || 'Falha ao remover matrícula.');
+      }
+
+      await carregarTurmas();
+    } catch (error) {
+      setErroTurmas((error as Error).message);
+    }
+  }
+
+  async function salvarAvaliacao(turmaId: string, alunoId: string, metaId: string): Promise<void> {
+    const conceito = conceitoSelecionado(turmaId, alunoId, metaId);
+    if (!conceito) {
+      setErroTurmas('Selecione um conceito para salvar a avaliação.');
+      return;
+    }
+
+    setErroTurmas('');
+
+    const existente = buscarAvaliacao(turmaId, alunoId, metaId);
+    const isUpdate = Boolean(existente);
+    const endpoint = isUpdate ? `${AVALIACAO_API_BASE}/${existente?.id ?? ''}` : AVALIACAO_API_BASE;
+
+    const payload = isUpdate
+      ? { conceito }
+      : {
+          turmaId,
+          alunoId,
+          metaId,
+          conceito
+        };
+
+    try {
+      const response = await fetch(endpoint, {
+        method: isUpdate ? 'PUT' : 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload)
+      });
+
+      if (!response.ok) {
+        const body = (await response.json()) as { error?: string };
+        throw new Error(body.error || 'Falha ao salvar avaliação.');
       }
 
       await carregarTurmas();
@@ -456,6 +573,63 @@ function App() {
 
                       {alunosMatriculados.length === 0 && <li>Nenhum aluno matriculado nesta turma.</li>}
                     </ul>
+
+                    <div className="avaliacoes-bloco">
+                      <h4>Avaliações por Meta</h4>
+
+                      {metas.length === 0 ? (
+                        <p>Sem metas cadastradas.</p>
+                      ) : alunosMatriculados.length === 0 ? (
+                        <p>Matricule alunos para lançar avaliações.</p>
+                      ) : (
+                        <table className="avaliacoes-table">
+                          <thead>
+                            <tr>
+                              <th>Aluno</th>
+                              {metas.map((meta) => (
+                                <th key={`${turma.id}-${meta.id}`}>{meta.nome}</th>
+                              ))}
+                            </tr>
+                          </thead>
+                          <tbody>
+                            {alunosMatriculados.map((aluno) => (
+                              <tr key={`linha-${turma.id}-${aluno.id}`}>
+                                <td>{aluno.nome}</td>
+                                {metas.map((meta) => (
+                                  <td key={`celula-${turma.id}-${aluno.id}-${meta.id}`}>
+                                    <div className="avaliacao-celula">
+                                      <select
+                                        value={conceitoSelecionado(turma.id, aluno.id, meta.id)}
+                                        onChange={(event) =>
+                                          atualizarConceitoSelecionado(
+                                            turma.id,
+                                            aluno.id,
+                                            meta.id,
+                                            event.target.value
+                                          )
+                                        }
+                                      >
+                                        <option value="">-</option>
+                                        <option value="MANA">MANA</option>
+                                        <option value="MPA">MPA</option>
+                                        <option value="MA">MA</option>
+                                      </select>
+                                      <button
+                                        type="button"
+                                        className="secondary"
+                                        onClick={() => void salvarAvaliacao(turma.id, aluno.id, meta.id)}
+                                      >
+                                        Salvar
+                                      </button>
+                                    </div>
+                                  </td>
+                                ))}
+                              </tr>
+                            ))}
+                          </tbody>
+                        </table>
+                      )}
+                    </div>
                   </article>
                 );
               })}

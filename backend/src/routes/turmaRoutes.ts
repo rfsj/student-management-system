@@ -5,6 +5,7 @@ const turmaRoutes = Router();
 
 turmaRoutes.get('/', TurmaController.listar);
 turmaRoutes.get('/:id/alunos', TurmaController.visualizarComAlunos);
+turmaRoutes.get('/:id/avaliacoes', TurmaController.visualizarComAvaliacoes);
 turmaRoutes.post('/', TurmaController.criar);
 turmaRoutes.post('/:id/alunos/:alunoId', TurmaController.matricular);
 turmaRoutes.put('/:id', TurmaController.atualizar);

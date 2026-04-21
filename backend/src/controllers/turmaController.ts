@@ -1,6 +1,7 @@
 import { Request, Response } from 'express';
 import TurmaService from '../services/turmaService';
 import MatriculaService from '../services/matriculaService';
+import AvaliacaoService from '../services/avaliacaoService';
 
 class TurmaController {
   private static sendError(res: Response, status: number, error?: string): void {
@@ -93,6 +94,23 @@ class TurmaController {
     }
 
     res.status(200).json({ turma: result.turma, alunos: result.alunos });
+  }
+
+  static visualizarComAvaliacoes(req: Request, res: Response): void {
+    const { id: turmaId } = req.params;
+    const result = AvaliacaoService.visualizarPorTurma(turmaId);
+
+    if (!result.success) {
+      TurmaController.sendError(res, result.status, result.error);
+      return;
+    }
+
+    res.status(200).json({
+      turma: result.turma,
+      alunos: result.alunos,
+      metas: result.metas,
+      avaliacoes: result.avaliacoes
+    });
   }
 }
 

@@ -2,6 +2,8 @@ import express from 'express';
 import HealthController from './controllers/healthController';
 import alunoRoutes from './routes/alunoRoutes';
 import turmaRoutes from './routes/turmaRoutes';
+import metaRoutes from './routes/metaRoutes';
+import avaliacaoRoutes from './routes/avaliacaoRoutes';
 
 const app = express();
 const PORT = 3000;
@@ -29,6 +31,12 @@ app.use('/alunos', alunoRoutes);
 
 // Turmas CRUD
 app.use('/turmas', turmaRoutes);
+
+// Metas
+app.use('/metas', metaRoutes);
+
+// Avaliacoes
+app.use('/avaliacoes', avaliacaoRoutes);
 
 // Start server
 app.listen(PORT, () => {

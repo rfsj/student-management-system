@@ -148,6 +148,42 @@ td {
   gap: 8px;
 }
 
+.avaliacoes-bloco {
+  margin-top: 14px;
+}
+
+.avaliacoes-bloco h4 {
+  margin: 0 0 8px;
+}
+
+.avaliacoes-table {
+  border: 1px solid #d1d5db;
+  font-size: 13px;
+}
+
+.avaliacoes-table th,
+.avaliacoes-table td {
+  padding: 8px;
+}
+
+.avaliacao-celula {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.avaliacao-celula select {
+  min-width: 76px;
+  border: 1px solid #d1d5db;
+  border-radius: 6px;
+  padding: 6px;
+}
+
+.avaliacao-celula button {
+  padding: 6px 8px;
+  font-size: 12px;
+}
+
 @media (max-width: 700px) {
   .form {
     grid-template-columns: 1fr;
@@ -158,6 +194,11 @@ td {
   }
 
   .matriculados-lista li {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+
+  .avaliacao-celula {
     flex-direction: column;
     align-items: flex-start;
   }
