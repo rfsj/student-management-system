@@ -1,0 +1,32 @@
+services:
+  backend:
+    build:
+      context: .
+      dockerfile: backend/Dockerfile
+    ports:
+      - "3000:3000"
+    volumes:
+      - ./:/app
+      - backend-node-modules:/app/node_modules
+      - backend-data:/app/backend/src/data
+    command: npx ts-node backend/src/index.ts
+
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+    depends_on:
+      - backend
+    ports:
+      - "5173:5173"
+    volumes:
+      - ./frontend:/app
+      - frontend-node-modules:/app/node_modules
+    environment:
+      VITE_API_BASE_URL: http://localhost:3000
+    command: npm run dev -- --host 0.0.0.0 --port 5173
+
+volumes:
+  backend-node-modules:
+  backend-data:
+  frontend-node-modules:
