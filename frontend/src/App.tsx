@@ -582,52 +582,54 @@ function App() {
                       ) : alunosMatriculados.length === 0 ? (
                         <p>Matricule alunos para lançar avaliações.</p>
                       ) : (
-                        <table className="avaliacoes-table">
-                          <thead>
-                            <tr>
-                              <th>Aluno</th>
-                              {metas.map((meta) => (
-                                <th key={`${turma.id}-${meta.id}`}>{meta.nome}</th>
-                              ))}
-                            </tr>
-                          </thead>
-                          <tbody>
-                            {alunosMatriculados.map((aluno) => (
-                              <tr key={`linha-${turma.id}-${aluno.id}`}>
-                                <td>{aluno.nome}</td>
+                        <div className="avaliacoes-table-wrapper">
+                          <table className="avaliacoes-table">
+                            <thead>
+                              <tr>
+                                <th>Aluno</th>
                                 {metas.map((meta) => (
-                                  <td key={`celula-${turma.id}-${aluno.id}-${meta.id}`}>
-                                    <div className="avaliacao-celula">
-                                      <select
-                                        value={conceitoSelecionado(turma.id, aluno.id, meta.id)}
-                                        onChange={(event) =>
-                                          atualizarConceitoSelecionado(
-                                            turma.id,
-                                            aluno.id,
-                                            meta.id,
-                                            event.target.value
-                                          )
-                                        }
-                                      >
-                                        <option value="">-</option>
-                                        <option value="MANA">MANA</option>
-                                        <option value="MPA">MPA</option>
-                                        <option value="MA">MA</option>
-                                      </select>
-                                      <button
-                                        type="button"
-                                        className="secondary"
-                                        onClick={() => void salvarAvaliacao(turma.id, aluno.id, meta.id)}
-                                      >
-                                        Salvar
-                                      </button>
-                                    </div>
-                                  </td>
+                                  <th key={`${turma.id}-${meta.id}`}>{meta.nome}</th>
                                 ))}
                               </tr>
-                            ))}
-                          </tbody>
-                        </table>
+                            </thead>
+                            <tbody>
+                              {alunosMatriculados.map((aluno) => (
+                                <tr key={`linha-${turma.id}-${aluno.id}`}>
+                                  <td>{aluno.nome}</td>
+                                  {metas.map((meta) => (
+                                    <td key={`celula-${turma.id}-${aluno.id}-${meta.id}`}>
+                                      <div className="avaliacao-celula">
+                                        <select
+                                          value={conceitoSelecionado(turma.id, aluno.id, meta.id)}
+                                          onChange={(event) =>
+                                            atualizarConceitoSelecionado(
+                                              turma.id,
+                                              aluno.id,
+                                              meta.id,
+                                              event.target.value
+                                            )
+                                          }
+                                        >
+                                          <option value="">-</option>
+                                          <option value="MANA">MANA</option>
+                                          <option value="MPA">MPA</option>
+                                          <option value="MA">MA</option>
+                                        </select>
+                                        <button
+                                          type="button"
+                                          className="secondary"
+                                          onClick={() => void salvarAvaliacao(turma.id, aluno.id, meta.id)}
+                                        >
+                                          Salvar
+                                        </button>
+                                      </div>
+                                    </td>
+                                  ))}
+                                </tr>
+                              ))}
+                            </tbody>
+                          </table>
+                        </div>
                       )}
                     </div>
                   </article>

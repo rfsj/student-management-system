@@ -157,8 +157,16 @@ td {
 }
 
 .avaliacoes-table {
+  width: max-content;
+  min-width: 100%;
   border: 1px solid #d1d5db;
   font-size: 13px;
+}
+
+.avaliacoes-table-wrapper {
+  width: 100%;
+  max-width: 100%;
+  overflow-x: auto;
 }
 
 .avaliacoes-table th,
