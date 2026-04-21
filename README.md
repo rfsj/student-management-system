@@ -53,3 +53,25 @@ Endpoints de consolidação:
 - Reprocessar consolidação completa: `POST /consolidacoes/reprocessar`
 - Consultar consolidado por aluno: `GET /consolidacoes/alunos/:alunoId`
 - Consultar consolidado por aluno e dia: `GET /consolidacoes/alunos/:alunoId?data=YYYY-MM-DD`
+
+## Envio de Email Consolidado Diario (Bloco 7)
+
+Regras de notificação:
+
+- Cada alteração de avaliação gera ou mantém uma pendência de notificação para a chave `alunoId + dataSimples`.
+- O dispatch diário envia no máximo 1 email por aluno por dia.
+- O conteúdo do email é agrupado por turma e meta.
+- A notificação só é marcada como `ENVIADO` após sucesso no envio.
+- Em caso de falha, a notificação permanece `PENDENTE` para reprocessamento.
+
+Adaptador inicial de email:
+
+- O projeto usa um adaptador fake desacoplado para permitir teste do fluxo sem infraestrutura externa.
+- Para simular falha, basta usar um email contendo `falha`.
+
+Endpoints de notificação:
+
+- Dispatch diário: `POST /notificacoes/dispatch` (opcional body `{ "dataSimples": "YYYY-MM-DD" }`)
+- Reprocessar pendências: `POST /notificacoes/reprocessar`
+- Listar pendências/enviados: `GET /notificacoes/pendencias?status=PENDENTE|ENVIADO`
+- Consultar log de envios: `GET /notificacoes/enviados?alunoId=<id>&data=YYYY-MM-DD`

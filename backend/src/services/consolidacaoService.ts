@@ -8,6 +8,7 @@ import {
   validarAlteracaoDeAvaliacao,
   validarConsolidadoDiario
 } from '../types/domain';
+import NotificacaoService from './notificacaoService';
 
 interface RegistrarAlteracaoInput {
   avaliacaoId: string;
@@ -167,7 +168,12 @@ class ConsolidacaoService {
       return ConsolidacaoService.fail(ConsolidacaoService.MESSAGES.PERSIST_ALTERACAO, 500);
     }
 
-    return ConsolidacaoService.persistirConsolidados(alteracoesContainer.itens);
+    const persistencia = ConsolidacaoService.persistirConsolidados(alteracoesContainer.itens);
+    if (!persistencia.success) {
+      return persistencia;
+    }
+
+    return NotificacaoService.registrarPendencia(input.alunoId, dataSimples);
   }
 
   static reprocessarTudo(): ConsolidacaoSuccessResult | ConsolidacaoFailResult {

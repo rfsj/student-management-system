@@ -5,6 +5,7 @@ import turmaRoutes from './routes/turmaRoutes';
 import metaRoutes from './routes/metaRoutes';
 import avaliacaoRoutes from './routes/avaliacaoRoutes';
 import consolidacaoRoutes from './routes/consolidacaoRoutes';
+import notificacaoRoutes from './routes/notificacaoRoutes';
 
 const app = express();
 const PORT = 3000;
@@ -41,6 +42,9 @@ app.use('/avaliacoes', avaliacaoRoutes);
 
 // Consolidacao de alteracoes
 app.use('/consolidacoes', consolidacaoRoutes);
+
+// Notificacoes por email
+app.use('/notificacoes', notificacaoRoutes);
 
 // Start server
 app.listen(PORT, () => {

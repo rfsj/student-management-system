@@ -188,6 +188,20 @@ interface ConsolidadoDiario {
   alteracoes: AlteracaoDeAvaliacao[];
 }
 
+type StatusNotificacaoDiaria = 'PENDENTE' | 'ENVIADO';
+
+interface NotificacaoDiaria {
+  id: string;
+  alunoId: string;
+  dataSimples: string;
+  status: StatusNotificacaoDiaria;
+  tentativas: number;
+  criadoEm: string;
+  atualizadoEm: string;
+  enviadoEm?: string;
+  ultimoErro?: string;
+}
+
 /**
  * Validador de AlteracaoDeAvaliacao
  */
@@ -241,6 +255,38 @@ function validarConsolidadoDiario(consolidado: any): asserts consolidado is Cons
   consolidado.alteracoes.forEach((alteracao: unknown) => validarAlteracaoDeAvaliacao(alteracao));
 }
 
+const STATUS_NOTIFICACAO_VALIDOS: StatusNotificacaoDiaria[] = ['PENDENTE', 'ENVIADO'];
+
+function validarNotificacaoDiaria(notificacao: any): asserts notificacao is NotificacaoDiaria {
+  if (!notificacao.id || typeof notificacao.id !== 'string' || notificacao.id.trim() === '') {
+    throw new Error('NotificacaoDiaria.id é obrigatório e deve ser uma string não-vazia');
+  }
+  if (!notificacao.alunoId || typeof notificacao.alunoId !== 'string' || notificacao.alunoId.trim() === '') {
+    throw new Error('NotificacaoDiaria.alunoId é obrigatório e deve ser uma string não-vazia');
+  }
+  if (!notificacao.dataSimples || typeof notificacao.dataSimples !== 'string') {
+    throw new Error('NotificacaoDiaria.dataSimples é obrigatório (formato: YYYY-MM-DD)');
+  }
+  if (!STATUS_NOTIFICACAO_VALIDOS.includes(notificacao.status)) {
+    throw new Error('NotificacaoDiaria.status inválido. Valores aceitos: PENDENTE, ENVIADO');
+  }
+  if (typeof notificacao.tentativas !== 'number' || notificacao.tentativas < 0) {
+    throw new Error('NotificacaoDiaria.tentativas deve ser um número maior ou igual a zero');
+  }
+  if (!notificacao.criadoEm || typeof notificacao.criadoEm !== 'string') {
+    throw new Error('NotificacaoDiaria.criadoEm é obrigatório e deve ser uma string (ISO)');
+  }
+  if (!notificacao.atualizadoEm || typeof notificacao.atualizadoEm !== 'string') {
+    throw new Error('NotificacaoDiaria.atualizadoEm é obrigatório e deve ser uma string (ISO)');
+  }
+  if (notificacao.enviadoEm !== undefined && typeof notificacao.enviadoEm !== 'string') {
+    throw new Error('NotificacaoDiaria.enviadoEm deve ser string quando informado');
+  }
+  if (notificacao.ultimoErro !== undefined && typeof notificacao.ultimoErro !== 'string') {
+    throw new Error('NotificacaoDiaria.ultimoErro deve ser string quando informado');
+  }
+}
+
 /**
  * Container para armazenar todas as entidades
  * Cada arquivo JSON terá uma dessas estruturas
@@ -267,5 +313,8 @@ export {
   validarAlteracaoDeAvaliacao,
   ConsolidadoDiario,
   validarConsolidadoDiario,
+  StatusNotificacaoDiaria,
+  NotificacaoDiaria,
+  validarNotificacaoDiaria,
   DataContainer
 };
