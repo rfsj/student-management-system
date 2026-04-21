@@ -1,6 +1,6 @@
 import { randomUUID } from 'crypto';
 import jsonRepository from '../repositories/jsonRepository';
-import { Aluno, DataContainer, validarAluno } from '../types/domain';
+import { Aluno, DataContainer, Turma, validarAluno } from '../types/domain';
 import { hasMeaningfulUpdate, sanitizeOptionalText } from './crudHelpers';
 
 interface CriarAlunoInput {
@@ -15,10 +15,12 @@ interface AtualizarAlunoInput {
 
 class AlunoService {
   private static readonly FILE_NAME = 'alunos.json';
+  private static readonly TURMAS_FILE_NAME = 'turmas.json';
   private static readonly MESSAGES = {
     REQUIRED_NAME: 'Campo nome é obrigatório.',
     UPDATE_AT_LEAST_ONE: 'Informe ao menos um campo para atualizar (nome ou email).',
     NOT_FOUND: 'Aluno não encontrado.',
+    HAS_ENROLLMENTS: 'Aluno possui vínculos com turma(s). Remova as matrículas antes de excluir o aluno.',
     PERSIST_CREATE: 'Falha ao persistir aluno.',
     PERSIST_UPDATE: 'Falha ao persistir atualização do aluno.',
     PERSIST_DELETE: 'Falha ao persistir remoção do aluno.'
@@ -40,6 +42,19 @@ class AlunoService {
     container.ultimaAtualizacao = new Date().toISOString();
     const writeResult = jsonRepository.write(AlunoService.FILE_NAME, container);
     return writeResult.success;
+  }
+
+  private static loadTurmasContainer(): DataContainer<Turma> {
+    return jsonRepository.readOrDefault<DataContainer<Turma>>(AlunoService.TURMAS_FILE_NAME, {
+      versao: '1.0',
+      ultimaAtualizacao: new Date().toISOString(),
+      itens: []
+    });
+  }
+
+  private static alunoTemVinculo(id: string): boolean {
+    const turmas = AlunoService.loadTurmasContainer().itens;
+    return turmas.some((turma) => (turma.alunoIds ?? []).includes(id));
   }
 
   static listar(): Aluno[] {
@@ -117,12 +132,16 @@ class AlunoService {
     return { success: true, aluno: atualizado };
   }
 
-  static remover(id: string): { success: boolean; error?: string; notFound?: boolean } {
+  static remover(id: string): { success: boolean; error?: string; notFound?: boolean; conflict?: boolean } {
     const container = AlunoService.loadContainer();
     const index = container.itens.findIndex((item) => item.id === id);
 
     if (index === -1) {
       return AlunoService.fail(AlunoService.MESSAGES.NOT_FOUND, true);
+    }
+
+    if (AlunoService.alunoTemVinculo(id)) {
+      return { success: false, error: AlunoService.MESSAGES.HAS_ENROLLMENTS, conflict: true };
     }
 
     container.itens.splice(index, 1);

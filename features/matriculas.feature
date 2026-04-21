@@ -58,3 +58,12 @@ Feature: Aceitacao de associacao de alunos as turmas
     And existe uma turma para matricula com nome "6F"
     When eu matriculo o aluno na turma
     Then o arquivo de turmas deve armazenar o vinculo de matricula
+
+  Scenario: Exclusao de aluno com vinculo deve falhar
+    Given o ambiente de matriculas esta limpo
+    And existe um aluno para matricula com nome "Gabi"
+    And existe uma turma para matricula com nome "7G"
+    And o aluno ja esta matriculado na turma
+    When eu tento excluir o aluno que possui vinculo
+    Then o status da resposta de matriculas deve ser 409
+    And a resposta de erro de matriculas deve conter "Aluno possui vínculos com turma(s)."

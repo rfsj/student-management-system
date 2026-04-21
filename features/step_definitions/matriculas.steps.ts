@@ -275,6 +275,20 @@ When('eu removo a matricula do aluno na turma', async function () {
   }
 });
 
+When('eu tento excluir o aluno que possui vinculo', async function () {
+  if (!alunoId) {
+    throw new Error('Aluno nao preparado para teste de exclusao com vinculo.');
+  }
+
+  try {
+    const result = await requestJson('DELETE', `/alunos/${alunoId}`);
+    lastStatus = result.status;
+    lastBody = result.body;
+  } catch (error) {
+    lastError = error as Error;
+  }
+});
+
 When('eu visualizo a turma com seus alunos', async function () {
   if (!turmaId) {
     throw new Error('Turma nao preparada para visualizacao.');

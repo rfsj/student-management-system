@@ -50,6 +50,11 @@ class AlunoController {
       return;
     }
 
+    if (!result.success && result.conflict) {
+      AlunoController.sendError(res, 409, result.error);
+      return;
+    }
+
     if (!result.success) {
       AlunoController.sendError(res, 500, result.error);
       return;

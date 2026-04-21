@@ -34,6 +34,18 @@ class MatriculaService {
     return { success: false, error, status };
   }
 
+  private static getTurmaIndex(container: DataContainer<Turma>, turmaId: string): number {
+    return container.itens.findIndex((item) => item.id === turmaId);
+  }
+
+  private static alunoExiste(container: DataContainer<Aluno>, alunoId: string): boolean {
+    return container.itens.some((item) => item.id === alunoId);
+  }
+
+  private static alunoIdsDaTurma(turma: Turma): string[] {
+    return turma.alunoIds ?? [];
+  }
+
   private static loadTurmasContainer(): DataContainer<Turma> {
     return jsonRepository.readOrDefault<DataContainer<Turma>>(MatriculaService.TURMAS_FILE, {
       versao: '1.0',
@@ -60,18 +72,17 @@ class MatriculaService {
     const turmasContainer = MatriculaService.loadTurmasContainer();
     const alunosContainer = MatriculaService.loadAlunosContainer();
 
-    const turmaIndex = turmasContainer.itens.findIndex((item) => item.id === turmaId);
+    const turmaIndex = MatriculaService.getTurmaIndex(turmasContainer, turmaId);
     if (turmaIndex === -1) {
       return MatriculaService.fail(MatriculaService.MESSAGES.TURMA_NOT_FOUND, 404);
     }
 
-    const alunoExiste = alunosContainer.itens.some((item) => item.id === alunoId);
-    if (!alunoExiste) {
+    if (!MatriculaService.alunoExiste(alunosContainer, alunoId)) {
       return MatriculaService.fail(MatriculaService.MESSAGES.ALUNO_NOT_FOUND, 404);
     }
 
     const turma = turmasContainer.itens[turmaIndex];
-    const alunoIds = turma.alunoIds ?? [];
+    const alunoIds = MatriculaService.alunoIdsDaTurma(turma);
 
     if (alunoIds.includes(alunoId)) {
       return MatriculaService.fail(MatriculaService.MESSAGES.MATRICULA_DUPLICADA, 400);
@@ -96,18 +107,17 @@ class MatriculaService {
     const turmasContainer = MatriculaService.loadTurmasContainer();
     const alunosContainer = MatriculaService.loadAlunosContainer();
 
-    const turmaIndex = turmasContainer.itens.findIndex((item) => item.id === turmaId);
+    const turmaIndex = MatriculaService.getTurmaIndex(turmasContainer, turmaId);
     if (turmaIndex === -1) {
       return MatriculaService.fail(MatriculaService.MESSAGES.TURMA_NOT_FOUND, 404);
     }
 
-    const alunoExiste = alunosContainer.itens.some((item) => item.id === alunoId);
-    if (!alunoExiste) {
+    if (!MatriculaService.alunoExiste(alunosContainer, alunoId)) {
       return MatriculaService.fail(MatriculaService.MESSAGES.ALUNO_NOT_FOUND, 404);
     }
 
     const turma = turmasContainer.itens[turmaIndex];
-    const alunoIds = turma.alunoIds ?? [];
+    const alunoIds = MatriculaService.alunoIdsDaTurma(turma);
 
     if (!alunoIds.includes(alunoId)) {
       return MatriculaService.fail(MatriculaService.MESSAGES.MATRICULA_NOT_FOUND, 404);
@@ -137,7 +147,7 @@ class MatriculaService {
       return MatriculaService.fail(MatriculaService.MESSAGES.TURMA_NOT_FOUND, 404);
     }
 
-    const alunoIds = turma.alunoIds ?? [];
+    const alunoIds = MatriculaService.alunoIdsDaTurma(turma);
     const alunos = alunosContainer.itens.filter((item) => alunoIds.includes(item.id));
 
     return {
