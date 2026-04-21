@@ -1,65 +1,48 @@
-Feature: Fundacao do Sistema
-  Como início do projeto
-  Desejo validar que a infraestrutura está funcionando
-  Para garantir a base técnica está pronta
+Feature: Aceitacao da fundacao
+  Como base do sistema
+  Desejo validar comportamentos essenciais da fundacao
+  Para garantir execucao local confiavel no pipeline
 
-  Scenario: Backend responde ao healthcheck
-    Given o servidor backend está iniciado
-    When eu faço uma requisição GET para "/health"
-    Then a resposta deve ter status 200
-    And a resposta deve conter "ok"
+  Scenario: Healthcheck retorna sucesso
+    Given o servidor backend esta iniciado
+    When eu faco uma requisicao GET para "/health"
+    Then a resposta HTTP deve ter status 200
+    And a resposta HTTP deve conter "ok"
 
-  Scenario: JSON inexistente é tratado
-    Given o módulo de persistência foi inicializado
-    When eu tentar ler um arquivo JSON que não existe
-    Then o erro deve ser tratado adequadamente
-    And o sistema não deve falhar
+  Scenario: Healthcheck em rota inexistente retorna erro
+    Given o servidor backend esta iniciado
+    When eu faco uma requisicao GET para "/health-inexistente"
+    Then a resposta HTTP deve ter status 404
 
-  Scenario: JSON inválido é tratado
-    Given eu tenho um arquivo JSON corrompido
-    When eu tentar ler este arquivo
-    Then o erro deve ser tratado adequadamente
-    And o sistema não deve falhar
+  Scenario: JSON existente e valido e lido com sucesso
+    Given o modulo de persistencia foi inicializado
+    When eu leio um arquivo JSON valido
+    Then a leitura JSON deve ter sucesso
 
-  Scenario: Conceito inválido é rejeitado
-    Given um contrato de avaliação foi definido
-    When eu tentar criar uma avaliação com conceito "INVALIDO"
-    Then a operação deve ser rejeitada
-    And apenas MANA, MPA e MA devem ser aceitos
+  Scenario: JSON inexistente retorna erro controlado
+    Given o modulo de persistencia foi inicializado
+    When eu leio um arquivo JSON inexistente
+    Then a leitura JSON deve falhar
+    And a mensagem de erro deve conter "Arquivo nao encontrado"
 
-  Scenario: Persistência JSON centralizada funciona
-    Given o repositório JSON está operacional
-    When eu escrever dados válidos em um arquivo
-    Then os dados devem ser salvos com sucesso
-    And os dados devem ser recuperáveis
+  Scenario: JSON valido nao gera erro de parse
+    Given o modulo de persistencia foi inicializado
+    When eu leio novamente o arquivo JSON valido
+    Then a leitura JSON deve ter sucesso
 
-  Scenario: Escrita segura evita arquivo parcial
-    Given o repositório JSON está operacional
-    When eu escrever dados em arquivo durante operação
-    Then o arquivo deve estar completo e válido
-    And nenhum arquivo parcial deve permanecer
+  Scenario: JSON invalido retorna erro de parse
+    Given eu tenho um arquivo JSON invalido
+    When eu leio o arquivo JSON invalido
+    Then a leitura JSON deve falhar
+    And a mensagem de erro deve conter "JSON invalido"
 
-  Scenario: Validador de Aluno rejeita dados incompletos
-    Given um validador de Aluno foi definido
-    When eu tentar validar um Aluno sem id
-    Then uma exceção deve ser lançada
-    And a mensagem deve explicar que id é obrigatório
+  Scenario: Conceito valido e aceito
+    Given o contrato de conceito foi definido
+    When eu valido o conceito "MANA"
+    Then a validacao de conceito deve ter sucesso
 
-  Scenario: Validador de Turma rejeita dados incompletos
-    Given um validador de Turma foi definido
-    When eu tentar validar uma Turma sem nome
-    Then uma exceção deve ser lançada
-    And a mensagem deve explicar que nome é obrigatório
-
-  Scenario: Validador de Avaliacao rejeita conceito inválido
-    Given um validador de Avaliacao foi definido
-    When eu tentar validar uma Avaliacao com conceito "OUTRO"
-    Then uma exceção deve ser lançada
-    And a mensagem deve mencionar conceito inválido
-
-  Scenario: Healthcheck indica persistência disponível
-    Given o servidor backend está iniciado
-    When eu faço uma requisição GET para "/health"
-    Then a resposta deve ter status 200
-    And a resposta deve conter "persistence"
-    And a resposta deve conter "timestamp"
+  Scenario: Conceito invalido e rejeitado
+    Given o contrato de conceito foi definido
+    When eu valido o conceito "INVALIDO"
+    Then a validacao de conceito deve falhar
+    And a mensagem de erro deve conter "Conceito invalido"

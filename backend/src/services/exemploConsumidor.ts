@@ -6,7 +6,6 @@ import jsonRepository from '../repositories/jsonRepository';
 import { 
   DataContainer, 
   Aluno, 
-  Conceito, 
   validarAluno 
 } from '../types/domain';
 
@@ -88,7 +87,7 @@ export function exemplo4_verificarEDeletar() {
  * 
  * Em vez de acessar arquivos diretamente, crie um serviço que usa jsonRepository:
  */
-export class AlunoService {
+export class ExemploAlunoService {
   /**
    * Buscar todos os alunos
    */
@@ -188,4 +187,4 @@ export class AlunoService {
   }
 }
 
-export default AlunoService;
+export default ExemploAlunoService;
