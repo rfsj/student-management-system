@@ -62,6 +62,7 @@ const jsonRepository = {
 };
 
 const CONCEITOS_VALIDOS = ['MANA', 'MPA', 'MA'];
+const BACKEND_PORT = 3100;
 
 let backendProcess: ChildProcess | null = null;
 let httpStatus: number | null = null;
@@ -82,7 +83,7 @@ function httpGet(endpoint: string): Promise<{ status: number; body: string }> {
     const req = http.request(
       {
         hostname: '127.0.0.1',
-        port: 3000,
+        port: BACKEND_PORT,
         path: endpoint,
         method: 'GET'
       },
@@ -116,7 +117,7 @@ async function waitForBackendReady(): Promise<void> {
     await wait(200);
   }
 
-  throw new Error('Backend nao iniciou na porta 3000 a tempo para os testes de aceitacao.');
+  throw new Error(`Backend nao iniciou na porta ${BACKEND_PORT} a tempo para os testes de aceitacao.`);
 }
 
 BeforeAll(async function () {
@@ -126,6 +127,7 @@ BeforeAll(async function () {
 
   backendProcess = spawn('node', ['-r', 'ts-node/register', 'backend/src/index.ts'], {
     cwd: process.cwd(),
+    env: { ...process.env, PORT: String(BACKEND_PORT) },
     stdio: 'ignore'
   });
 

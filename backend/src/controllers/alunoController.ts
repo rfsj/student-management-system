@@ -12,8 +12,8 @@ class AlunoController {
   }
 
   static criar(req: Request, res: Response): void {
-    const { nome, email } = req.body as { nome?: string; email?: string };
-    const result = AlunoService.criar({ nome: nome ?? '', email });
+    const { nome, cpf, email } = req.body as { nome?: string; cpf?: string; email?: string };
+    const result = AlunoService.criar({ nome: nome ?? '', cpf: cpf ?? '', email });
 
     if (!result.success) {
       AlunoController.sendError(res, 400, result.error);
@@ -25,8 +25,8 @@ class AlunoController {
 
   static atualizar(req: Request, res: Response): void {
     const { id } = req.params;
-    const { nome, email } = req.body as { nome?: string; email?: string };
-    const result = AlunoService.atualizar(id, { nome, email });
+    const { nome, cpf, email } = req.body as { nome?: string; cpf?: string; email?: string };
+    const result = AlunoService.atualizar(id, { nome, cpf, email });
 
     if (!result.success && result.notFound) {
       AlunoController.sendError(res, 404, result.error);

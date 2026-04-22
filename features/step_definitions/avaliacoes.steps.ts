@@ -36,6 +36,7 @@ type TurmaComAvaliacoesPayload = {
 
 let backendProcess: ChildProcess | null = null;
 let startedByThisFile = false;
+const BACKEND_PORT = 3100;
 let lastStatus: number | null = null;
 let lastBody = '';
 let lastError: Error | null = null;
@@ -71,7 +72,7 @@ function requestJson(
     const req = http.request(
       {
         hostname: '127.0.0.1',
-        port: 3000,
+        port: BACKEND_PORT,
         path: endpoint,
         method,
         headers: payload ? { 'Content-Type': 'application/json' } : undefined
@@ -117,7 +118,11 @@ async function waitForBackendReady(): Promise<boolean> {
 }
 
 async function criarAluno(nome: string): Promise<string> {
-  const response = await requestJson('POST', '/alunos', { nome, email: `${nome.toLowerCase()}@escola.com` });
+  const response = await requestJson('POST', '/alunos', {
+    nome,
+    cpf: '22345678901',
+    email: `${nome.toLowerCase()}@escola.com`
+  });
   if (response.status !== 201) {
     throw new Error(`Falha ao criar aluno: ${response.status} ${response.body}`);
   }
@@ -126,7 +131,12 @@ async function criarAluno(nome: string): Promise<string> {
 }
 
 async function criarTurma(nome: string): Promise<string> {
-  const response = await requestJson('POST', '/turmas', { nome, descricao: `Turma ${nome}` });
+  const response = await requestJson('POST', '/turmas', {
+    nome,
+    descricao: `Turma ${nome}`,
+    ano: 2026,
+    semestre: 1
+  });
   if (response.status !== 201) {
     throw new Error(`Falha ao criar turma: ${response.status} ${response.body}`);
   }
@@ -163,6 +173,7 @@ BeforeAll(async function () {
 
   backendProcess = spawn('node', ['-r', 'ts-node/register', 'backend/src/index.ts'], {
     cwd: process.cwd(),
+    env: { ...process.env, PORT: String(BACKEND_PORT) },
     stdio: 'ignore'
   });
   startedByThisFile = true;

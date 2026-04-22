@@ -6,18 +6,26 @@ import { hasMeaningfulUpdate, sanitizeOptionalText } from './crudHelpers';
 interface CriarTurmaInput {
   nome: string;
   descricao?: string;
+  ano: number;
+  semestre: number;
 }
 
 interface AtualizarTurmaInput {
   nome?: string;
   descricao?: string;
+  ano?: number;
+  semestre?: number;
 }
 
 class TurmaService {
   private static readonly FILE_NAME = 'turmas.json';
   private static readonly MESSAGES = {
     REQUIRED_NAME: 'Campo nome é obrigatório.',
-    UPDATE_AT_LEAST_ONE: 'Informe ao menos um campo para atualizar (nome ou descricao).',
+    REQUIRED_YEAR: 'Campo ano é obrigatório.',
+    REQUIRED_SEMESTER: 'Campo semestre é obrigatório.',
+    INVALID_YEAR: 'Campo ano deve ser um número inteiro válido.',
+    INVALID_SEMESTER: 'Campo semestre deve ser 1 ou 2.',
+    UPDATE_AT_LEAST_ONE: 'Informe ao menos um campo para atualizar (nome, descricao, ano ou semestre).',
     NOT_FOUND: 'Turma não encontrada.',
     PERSIST_CREATE: 'Falha ao persistir turma.',
     PERSIST_UPDATE: 'Falha ao persistir atualização da turma.',
@@ -50,6 +58,18 @@ class TurmaService {
     if (!input.nome || input.nome.trim() === '') {
       return TurmaService.fail(TurmaService.MESSAGES.REQUIRED_NAME);
     }
+    if (input.ano === undefined) {
+      return TurmaService.fail(TurmaService.MESSAGES.REQUIRED_YEAR);
+    }
+    if (input.semestre === undefined) {
+      return TurmaService.fail(TurmaService.MESSAGES.REQUIRED_SEMESTER);
+    }
+    if (!Number.isInteger(input.ano) || input.ano < 2000) {
+      return TurmaService.fail(TurmaService.MESSAGES.INVALID_YEAR);
+    }
+    if (![1, 2].includes(input.semestre)) {
+      return TurmaService.fail(TurmaService.MESSAGES.INVALID_SEMESTER);
+    }
 
     const container = TurmaService.loadContainer();
     const agora = new Date().toISOString();
@@ -58,6 +78,8 @@ class TurmaService {
       id: randomUUID(),
       nome: input.nome.trim(),
       descricao: sanitizeOptionalText(input.descricao),
+      ano: input.ano,
+      semestre: input.semestre,
       alunoIds: [],
       dataCriacao: agora,
       dataAtualizacao: agora
@@ -83,7 +105,8 @@ class TurmaService {
     id: string,
     input: AtualizarTurmaInput
   ): { success: boolean; turma?: Turma; error?: string; notFound?: boolean } {
-    if (!hasMeaningfulUpdate([input.nome, input.descricao])) {
+    const hasNumericUpdate = input.ano !== undefined || input.semestre !== undefined;
+    if (!hasMeaningfulUpdate([input.nome, input.descricao]) && !hasNumericUpdate) {
       return TurmaService.fail(TurmaService.MESSAGES.UPDATE_AT_LEAST_ONE);
     }
 
@@ -94,11 +117,20 @@ class TurmaService {
       return TurmaService.fail(TurmaService.MESSAGES.NOT_FOUND, true);
     }
 
+    if (input.ano !== undefined && (!Number.isInteger(input.ano) || input.ano < 2000)) {
+      return TurmaService.fail(TurmaService.MESSAGES.INVALID_YEAR);
+    }
+    if (input.semestre !== undefined && ![1, 2].includes(input.semestre)) {
+      return TurmaService.fail(TurmaService.MESSAGES.INVALID_SEMESTER);
+    }
+
     const atual = container.itens[index];
     const atualizado: Turma = {
       ...atual,
       nome: input.nome !== undefined ? input.nome.trim() : atual.nome,
       descricao: sanitizeOptionalText(input.descricao) ?? atual.descricao,
+      ano: input.ano ?? atual.ano,
+      semestre: input.semestre ?? atual.semestre,
       alunoIds: atual.alunoIds ?? [],
       dataAtualizacao: new Date().toISOString()
     };

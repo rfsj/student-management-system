@@ -22,12 +22,15 @@ type TurmaPayload = {
   id: string;
   nome: string;
   descricao?: string;
+  ano: number;
+  semestre: number;
   dataCriacao: string;
   dataAtualizacao: string;
 };
 
 let backendProcess: ChildProcess | null = null;
 let startedByThisFile = false;
+const BACKEND_PORT = 3100;
 let lastStatus: number | null = null;
 let lastBody = '';
 let lastError: Error | null = null;
@@ -46,7 +49,7 @@ function requestJson(
     const req = http.request(
       {
         hostname: '127.0.0.1',
-        port: 3000,
+        port: BACKEND_PORT,
         path: endpoint,
         method,
         headers: payload ? { 'Content-Type': 'application/json' } : undefined
@@ -98,6 +101,7 @@ BeforeAll(async function () {
 
   backendProcess = spawn('node', ['-r', 'ts-node/register', 'backend/src/index.ts'], {
     cwd: process.cwd(),
+    env: { ...process.env, PORT: String(BACKEND_PORT) },
     stdio: 'ignore'
   });
   startedByThisFile = true;
@@ -137,9 +141,11 @@ Given('o ambiente de turmas esta limpo', function () {
   }
 });
 
-When('eu crio uma turma com nome {string} e descricao {string}', async function (nome: string, descricao: string) {
+When(
+  'eu crio uma turma com nome {string}, descricao {string}, ano {int} e semestre {int}',
+  async function (nome: string, descricao: string, ano: number, semestre: number) {
   try {
-    const result = await requestJson('POST', '/turmas', { nome, descricao });
+    const result = await requestJson('POST', '/turmas', { nome, descricao, ano, semestre });
     lastStatus = result.status;
     lastBody = result.body;
 
@@ -150,16 +156,20 @@ When('eu crio uma turma com nome {string} e descricao {string}', async function 
   } catch (error) {
     lastError = error as Error;
   }
-});
+  }
+);
 
-Given('existe uma turma com nome {string} e descricao {string}', async function (nome: string, descricao: string) {
-  const result = await requestJson('POST', '/turmas', { nome, descricao });
+Given(
+  'existe uma turma com nome {string}, descricao {string}, ano {int} e semestre {int}',
+  async function (nome: string, descricao: string, ano: number, semestre: number) {
+    const result = await requestJson('POST', '/turmas', { nome, descricao, ano, semestre });
   if (result.status !== 201) {
     throw new Error(`Falha ao preparar turma: ${result.status} ${result.body}`);
   }
   const turma = JSON.parse(result.body) as TurmaPayload;
   ultimaTurmaId = turma.id;
-});
+  }
+);
 
 When('eu listo as turmas', async function () {
   try {
@@ -204,7 +214,17 @@ When('eu removo a turma existente', async function () {
 
 When('eu tento criar uma turma sem nome', async function () {
   try {
-    const result = await requestJson('POST', '/turmas', { descricao: 'Sem nome' });
+    const result = await requestJson('POST', '/turmas', { descricao: 'Sem nome', ano: 2026, semestre: 1 });
+    lastStatus = result.status;
+    lastBody = result.body;
+  } catch (error) {
+    lastError = error as Error;
+  }
+});
+
+When('eu tento criar uma turma sem ano e semestre', async function () {
+  try {
+    const result = await requestJson('POST', '/turmas', { nome: 'Sem periodo', descricao: 'Teste' });
     lastStatus = result.status;
     lastBody = result.body;
   } catch (error) {
@@ -233,8 +253,8 @@ When('eu tento remover uma turma inexistente', async function () {
 });
 
 Given('existem duas turmas cadastradas {string} e {string}', async function (nomeA: string, nomeB: string) {
-  const r1 = await requestJson('POST', '/turmas', { nome: nomeA, descricao: `${nomeA} descricao` });
-  const r2 = await requestJson('POST', '/turmas', { nome: nomeB, descricao: `${nomeB} descricao` });
+  const r1 = await requestJson('POST', '/turmas', { nome: nomeA, descricao: `${nomeA} descricao`, ano: 2026, semestre: 1 });
+  const r2 = await requestJson('POST', '/turmas', { nome: nomeB, descricao: `${nomeB} descricao`, ano: 2026, semestre: 2 });
 
   if (r1.status !== 201 || r2.status !== 201) {
     throw new Error('Falha ao criar turmas de regressao.');

@@ -1,15 +1,17 @@
 import { randomUUID } from 'crypto';
 import jsonRepository from '../repositories/jsonRepository';
 import { Aluno, DataContainer, Turma, validarAluno } from '../types/domain';
-import { hasMeaningfulUpdate, sanitizeOptionalText } from './crudHelpers';
+import { hasMeaningfulUpdate, sanitizeCpf, sanitizeOptionalText } from './crudHelpers';
 
 interface CriarAlunoInput {
   nome: string;
+  cpf: string;
   email?: string;
 }
 
 interface AtualizarAlunoInput {
   nome?: string;
+  cpf?: string;
   email?: string;
 }
 
@@ -18,7 +20,9 @@ class AlunoService {
   private static readonly TURMAS_FILE_NAME = 'turmas.json';
   private static readonly MESSAGES = {
     REQUIRED_NAME: 'Campo nome é obrigatório.',
-    UPDATE_AT_LEAST_ONE: 'Informe ao menos um campo para atualizar (nome ou email).',
+    REQUIRED_CPF: 'Campo cpf é obrigatório.',
+    INVALID_CPF: 'Campo cpf deve conter 11 dígitos.',
+    UPDATE_AT_LEAST_ONE: 'Informe ao menos um campo para atualizar (nome, cpf ou email).',
     NOT_FOUND: 'Aluno não encontrado.',
     HAS_ENROLLMENTS: 'Aluno possui vínculos com turma(s). Remova as matrículas antes de excluir o aluno.',
     PERSIST_CREATE: 'Falha ao persistir aluno.',
@@ -66,12 +70,21 @@ class AlunoService {
       return AlunoService.fail(AlunoService.MESSAGES.REQUIRED_NAME);
     }
 
+    const cpf = sanitizeCpf(input.cpf);
+    if (!cpf) {
+      return AlunoService.fail(AlunoService.MESSAGES.REQUIRED_CPF);
+    }
+    if (cpf.length !== 11) {
+      return AlunoService.fail(AlunoService.MESSAGES.INVALID_CPF);
+    }
+
     const container = AlunoService.loadContainer();
     const agora = new Date().toISOString();
 
     const novoAluno: Aluno = {
       id: randomUUID(),
       nome: input.nome.trim(),
+      cpf,
       email: sanitizeOptionalText(input.email),
       dataCriacao: agora,
       dataAtualizacao: agora
@@ -97,7 +110,7 @@ class AlunoService {
     id: string,
     input: AtualizarAlunoInput
   ): { success: boolean; aluno?: Aluno; error?: string; notFound?: boolean } {
-    if (!hasMeaningfulUpdate([input.nome, input.email])) {
+    if (!hasMeaningfulUpdate([input.nome, input.cpf, input.email])) {
       return AlunoService.fail(AlunoService.MESSAGES.UPDATE_AT_LEAST_ONE);
     }
 
@@ -108,10 +121,19 @@ class AlunoService {
       return AlunoService.fail(AlunoService.MESSAGES.NOT_FOUND, true);
     }
 
+    const cpf = input.cpf !== undefined ? sanitizeCpf(input.cpf) : undefined;
+    if (input.cpf !== undefined && !cpf) {
+      return AlunoService.fail(AlunoService.MESSAGES.REQUIRED_CPF);
+    }
+    if (cpf !== undefined && cpf.length !== 11) {
+      return AlunoService.fail(AlunoService.MESSAGES.INVALID_CPF);
+    }
+
     const atual = container.itens[index];
     const atualizado: Aluno = {
       ...atual,
       nome: input.nome !== undefined ? input.nome.trim() : atual.nome,
+      cpf: cpf ?? atual.cpf,
       email: sanitizeOptionalText(input.email) ?? atual.email,
       dataAtualizacao: new Date().toISOString()
     };

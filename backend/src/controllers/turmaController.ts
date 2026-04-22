@@ -14,8 +14,13 @@ class TurmaController {
   }
 
   static criar(req: Request, res: Response): void {
-    const { nome, descricao } = req.body as { nome?: string; descricao?: string };
-    const result = TurmaService.criar({ nome: nome ?? '', descricao });
+    const { nome, descricao, ano, semestre } = req.body as {
+      nome?: string;
+      descricao?: string;
+      ano?: number;
+      semestre?: number;
+    };
+    const result = TurmaService.criar({ nome: nome ?? '', descricao, ano: ano as number, semestre: semestre as number });
 
     if (!result.success) {
       TurmaController.sendError(res, 400, result.error);
@@ -27,8 +32,13 @@ class TurmaController {
 
   static atualizar(req: Request, res: Response): void {
     const { id } = req.params;
-    const { nome, descricao } = req.body as { nome?: string; descricao?: string };
-    const result = TurmaService.atualizar(id, { nome, descricao });
+    const { nome, descricao, ano, semestre } = req.body as {
+      nome?: string;
+      descricao?: string;
+      ano?: number;
+      semestre?: number;
+    };
+    const result = TurmaService.atualizar(id, { nome, descricao, ano, semestre });
 
     if (!result.success && result.notFound) {
       TurmaController.sendError(res, 404, result.error);

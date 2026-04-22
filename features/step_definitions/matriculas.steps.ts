@@ -7,6 +7,7 @@ import { spawn, ChildProcess } from 'child_process';
 type AlunoPayload = {
   id: string;
   nome: string;
+  cpf: string;
   email?: string;
   dataCriacao: string;
   dataAtualizacao: string;
@@ -16,6 +17,8 @@ type TurmaPayload = {
   id: string;
   nome: string;
   descricao?: string;
+  ano: number;
+  semestre: number;
   alunoIds?: string[];
   dataCriacao: string;
   dataAtualizacao: string;
@@ -34,6 +37,7 @@ type TurmaComAlunosPayload = {
 
 let backendProcess: ChildProcess | null = null;
 let startedByThisFile = false;
+const BACKEND_PORT = 3100;
 let lastStatus: number | null = null;
 let lastBody = '';
 let lastError: Error | null = null;
@@ -67,6 +71,17 @@ function wait(ms: number): Promise<void> {
   return new Promise((resolve) => setTimeout(resolve, ms));
 }
 
+function cpfParaNome(nome: string): string {
+  const base = nome
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .replace(/\W/g, '')
+    .slice(0, 6)
+    .padEnd(6, '0');
+
+  return `12345${base}`.replace(/\D/g, '').slice(0, 11).padEnd(11, '7');
+}
+
 function requestJson(
   method: 'GET' | 'POST' | 'PUT' | 'DELETE',
   endpoint: string,
@@ -76,7 +91,7 @@ function requestJson(
     const req = http.request(
       {
         hostname: '127.0.0.1',
-        port: 3000,
+        port: BACKEND_PORT,
         path: endpoint,
         method,
         headers: payload ? { 'Content-Type': 'application/json' } : undefined
@@ -128,6 +143,7 @@ BeforeAll(async function () {
 
   backendProcess = spawn('node', ['-r', 'ts-node/register', 'backend/src/index.ts'], {
     cwd: process.cwd(),
+    env: { ...process.env, PORT: String(BACKEND_PORT) },
     stdio: 'ignore'
   });
   startedByThisFile = true;
@@ -169,6 +185,7 @@ Given('o ambiente de matriculas esta limpo', function () {
 Given('existe um aluno para matricula com nome {string}', async function (nome: string) {
   const result = await requestJson('POST', '/alunos', {
     nome,
+    cpf: cpfParaNome(nome),
     email: `${nome.toLowerCase()}@escola.com`
   });
 
@@ -183,7 +200,9 @@ Given('existe um aluno para matricula com nome {string}', async function (nome: 
 Given('existe uma turma para matricula com nome {string}', async function (nome: string) {
   const result = await requestJson('POST', '/turmas', {
     nome,
-    descricao: `Turma ${nome}`
+    descricao: `Turma ${nome}`,
+    ano: 2026,
+    semestre: 1
   });
 
   if (result.status !== 201) {

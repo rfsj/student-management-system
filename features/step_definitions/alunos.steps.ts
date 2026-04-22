@@ -21,6 +21,7 @@ const jsonRepository = {
 type AlunoPayload = {
   id: string;
   nome: string;
+  cpf: string;
   email?: string;
   dataCriacao: string;
   dataAtualizacao: string;
@@ -28,6 +29,7 @@ type AlunoPayload = {
 
 let backendProcess: ChildProcess | null = null;
 let startedByThisFile = false;
+const BACKEND_PORT = 3100;
 let lastStatus: number | null = null;
 let lastBody = '';
 let lastError: Error | null = null;
@@ -46,7 +48,7 @@ function requestJson(
     const req = http.request(
       {
         hostname: '127.0.0.1',
-        port: 3000,
+        port: BACKEND_PORT,
         path: endpoint,
         method,
         headers: payload ? { 'Content-Type': 'application/json' } : undefined
@@ -98,6 +100,7 @@ BeforeAll(async function () {
 
   backendProcess = spawn('node', ['-r', 'ts-node/register', 'backend/src/index.ts'], {
     cwd: process.cwd(),
+    env: { ...process.env, PORT: String(BACKEND_PORT) },
     stdio: 'ignore'
   });
   startedByThisFile = true;
@@ -137,9 +140,9 @@ Given('o ambiente de alunos esta limpo', function () {
   }
 });
 
-When('eu crio um aluno com nome {string} e email {string}', async function (nome: string, email: string) {
+When('eu crio um aluno com nome {string}, cpf {string} e email {string}', async function (nome: string, cpf: string, email: string) {
   try {
-    const result = await requestJson('POST', '/alunos', { nome, email });
+    const result = await requestJson('POST', '/alunos', { nome, cpf, email });
     lastStatus = result.status;
     lastBody = result.body;
 
@@ -152,8 +155,8 @@ When('eu crio um aluno com nome {string} e email {string}', async function (nome
   }
 });
 
-Given('existe um aluno com nome {string} e email {string}', async function (nome: string, email: string) {
-  const result = await requestJson('POST', '/alunos', { nome, email });
+Given('existe um aluno com nome {string}, cpf {string} e email {string}', async function (nome: string, cpf: string, email: string) {
+  const result = await requestJson('POST', '/alunos', { nome, cpf, email });
   if (result.status !== 201) {
     throw new Error(`Falha ao preparar aluno: ${result.status} ${result.body}`);
   }
@@ -204,7 +207,17 @@ When('eu removo o aluno existente', async function () {
 
 When('eu tento criar um aluno sem nome', async function () {
   try {
-    const result = await requestJson('POST', '/alunos', { email: 'semnome@escola.com' });
+    const result = await requestJson('POST', '/alunos', { cpf: '12345678999', email: 'semnome@escola.com' });
+    lastStatus = result.status;
+    lastBody = result.body;
+  } catch (error) {
+    lastError = error as Error;
+  }
+});
+
+When('eu tento criar um aluno sem cpf', async function () {
+  try {
+    const result = await requestJson('POST', '/alunos', { nome: 'Sem CPF', email: 'semcpf@escola.com' });
     lastStatus = result.status;
     lastBody = result.body;
   } catch (error) {
@@ -233,8 +246,16 @@ When('eu tento remover um aluno inexistente', async function () {
 });
 
 Given('existem dois alunos cadastrados {string} e {string}', async function (nomeA: string, nomeB: string) {
-  const r1 = await requestJson('POST', '/alunos', { nome: nomeA, email: `${nomeA.toLowerCase()}@escola.com` });
-  const r2 = await requestJson('POST', '/alunos', { nome: nomeB, email: `${nomeB.toLowerCase()}@escola.com` });
+  const r1 = await requestJson('POST', '/alunos', {
+    nome: nomeA,
+    cpf: '12345678001',
+    email: `${nomeA.toLowerCase()}@escola.com`
+  });
+  const r2 = await requestJson('POST', '/alunos', {
+    nome: nomeB,
+    cpf: '12345678002',
+    email: `${nomeB.toLowerCase()}@escola.com`
+  });
 
   if (r1.status !== 201 || r2.status !== 201) {
     throw new Error('Falha ao criar alunos de regressao.');

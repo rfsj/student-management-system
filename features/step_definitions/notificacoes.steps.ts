@@ -4,8 +4,8 @@ import http from 'http';
 import path from 'path';
 import { ChildProcess, spawn } from 'child_process';
 
-type AlunoPayload = { id: string; nome: string; email?: string };
-type TurmaPayload = { id: string; nome: string };
+type AlunoPayload = { id: string; nome: string; cpf: string; email?: string };
+type TurmaPayload = { id: string; nome: string; ano: number; semestre: number };
 type MetaPayload = { id: string; nome: string };
 type AvaliacaoPayload = { id: string; turmaId: string; alunoId: string; metaId: string; conceito: string };
 type DispatchPayload = { enviados: number; falhas: number; processados: number };
@@ -25,6 +25,7 @@ type EmailEnviadoPayload = {
 
 let backendProcess: ChildProcess | null = null;
 let startedByThisFile = false;
+const BACKEND_PORT = 3100;
 
 let lastStatus: number | null = null;
 let lastBody = '';
@@ -61,7 +62,7 @@ function requestJson(
     const req = http.request(
       {
         hostname: '127.0.0.1',
-        port: 3000,
+        port: BACKEND_PORT,
         path: endpoint,
         method,
         headers: payload ? { 'Content-Type': 'application/json' } : undefined
@@ -112,6 +113,7 @@ async function startBackend(): Promise<void> {
 
   backendProcess = spawn('node', ['-r', 'ts-node/register', 'backend/src/index.ts'], {
     cwd: process.cwd(),
+    env: { ...process.env, PORT: String(BACKEND_PORT) },
     stdio: 'ignore'
   });
 
@@ -133,7 +135,7 @@ async function stopBackend(): Promise<void> {
 }
 
 async function criarAluno(nome: string, email: string): Promise<string> {
-  const response = await requestJson('POST', '/alunos', { nome, email });
+  const response = await requestJson('POST', '/alunos', { nome, cpf: '42345678901', email });
   if (response.status !== 201) {
     throw new Error(`Falha ao criar aluno: ${response.status} ${response.body}`);
   }
@@ -149,7 +151,12 @@ async function atualizarEmailAluno(id: string, email: string): Promise<void> {
 }
 
 async function criarTurma(nome: string): Promise<string> {
-  const response = await requestJson('POST', '/turmas', { nome, descricao: `Turma ${nome}` });
+  const response = await requestJson('POST', '/turmas', {
+    nome,
+    descricao: `Turma ${nome}`,
+    ano: 2026,
+    semestre: 1
+  });
   if (response.status !== 201) {
     throw new Error(`Falha ao criar turma: ${response.status} ${response.body}`);
   }

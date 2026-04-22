@@ -35,6 +35,7 @@ function validarConceito(valor: any): void {
 interface Aluno {
   id: string;
   nome: string;
+  cpf: string;
   email?: string;
   dataCriacao: string;
   dataAtualizacao: string;
@@ -49,6 +50,9 @@ function validarAluno(aluno: any): asserts aluno is Aluno {
   }
   if (!aluno.nome || typeof aluno.nome !== 'string' || aluno.nome.trim() === '') {
     throw new Error('Aluno.nome é obrigatório e deve ser uma string não-vazia');
+  }
+  if (!aluno.cpf || typeof aluno.cpf !== 'string' || aluno.cpf.trim() === '') {
+    throw new Error('Aluno.cpf é obrigatório e deve ser uma string não-vazia');
   }
   if (!aluno.dataCriacao || typeof aluno.dataCriacao !== 'string') {
     throw new Error('Aluno.dataCriacao é obrigatório e deve ser uma string (ISO)');
@@ -65,6 +69,8 @@ interface Turma {
   id: string;
   nome: string;
   descricao?: string;
+  ano: number;
+  semestre: number;
   alunoIds: string[];
   dataCriacao: string;
   dataAtualizacao: string;
@@ -79,6 +85,12 @@ function validarTurma(turma: any): asserts turma is Turma {
   }
   if (!turma.nome || typeof turma.nome !== 'string' || turma.nome.trim() === '') {
     throw new Error('Turma.nome é obrigatório e deve ser uma string não-vazia');
+  }
+  if (typeof turma.ano !== 'number' || !Number.isInteger(turma.ano) || turma.ano < 2000) {
+    throw new Error('Turma.ano é obrigatório e deve ser um número inteiro válido');
+  }
+  if (typeof turma.semestre !== 'number' || !Number.isInteger(turma.semestre) || ![1, 2].includes(turma.semestre)) {
+    throw new Error('Turma.semestre é obrigatório e deve ser 1 ou 2');
   }
   if (!turma.dataCriacao || typeof turma.dataCriacao !== 'string') {
     throw new Error('Turma.dataCriacao é obrigatório e deve ser uma string (ISO)');

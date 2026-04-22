@@ -8,7 +8,7 @@ import consolidacaoRoutes from './routes/consolidacaoRoutes';
 import notificacaoRoutes from './routes/notificacaoRoutes';
 
 const app = express();
-const PORT = 3000;
+const PORT = Number(process.env.PORT ?? 3000);
 
 // Middleware
 app.use(express.json());
