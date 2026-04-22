@@ -179,6 +179,14 @@ th {
   margin-top: 16px;
 }
 
+.turmas-vinculos-matriculas {
+  grid-template-columns: 1fr;
+}
+
+.turmas-vinculos-avaliacoes {
+  grid-template-columns: 1fr;
+}
+
 .turma-vinculo-card {
   border: 1px solid #e7dfd2;
   border-radius: 18px;
@@ -192,6 +200,12 @@ th {
   gap: 12px;
   align-items: flex-start;
   margin-bottom: 10px;
+}
+
+.card-actions {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
 }
 
 .turma-card-header h3 {
@@ -242,6 +256,10 @@ th {
   gap: 2px;
 }
 
+.matriculados-lista button {
+  align-self: center;
+}
+
 .avaliacoes-bloco {
   margin-top: 14px;
 }
@@ -290,6 +308,7 @@ th {
   .actions,
   .page-nav,
   .row-actions,
+  .card-actions,
   .matricula-form,
   .turma-card-header,
   .matriculados-lista li,

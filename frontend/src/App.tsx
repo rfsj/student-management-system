@@ -66,13 +66,90 @@ const ALUNO_API_BASE = `${API_BASE_URL}/alunos`;
 const TURMA_API_BASE = `${API_BASE_URL}/turmas`;
 const META_API_BASE = `${API_BASE_URL}/metas`;
 const AVALIACAO_API_BASE = `${API_BASE_URL}/avaliacoes`;
+const ANO_ATUAL = new Date().getFullYear();
+
+function criarFormularioTurmaInicial(): TurmaFormState {
+  return { nome: '', descricao: '', ano: String(ANO_ATUAL), semestre: '1' };
+}
+
+function normalizarNomeInput(valor: string): string {
+  return valor.replace(/[^A-Za-zÀ-ÿ\s'-]/g, '').replace(/\s{2,}/g, ' ');
+}
+
+function normalizarCpfInput(valor: string): string {
+  const digitos = valor.replace(/\D/g, '').slice(0, 11);
+  const partes = [
+    digitos.slice(0, 3),
+    digitos.slice(3, 6),
+    digitos.slice(6, 9),
+    digitos.slice(9, 11)
+  ].filter(Boolean);
+
+  if (partes.length === 0) {
+    return '';
+  }
+
+  if (partes.length === 1) {
+    return partes[0];
+  }
+
+  if (partes.length === 2) {
+    return `${partes[0]}.${partes[1]}`;
+  }
+
+  if (partes.length === 3) {
+    return `${partes[0]}.${partes[1]}.${partes[2]}`;
+  }
+
+  return `${partes[0]}.${partes[1]}.${partes[2]}-${partes[3]}`;
+}
+
+function formatarCpf(valor: string): string {
+  if (!valor) {
+    return '-';
+  }
+
+  return normalizarCpfInput(valor);
+}
+
+function normalizarEmailInput(valor: string): string {
+  return valor.replace(/\s+/g, '').toLowerCase();
+}
+
+function normalizarAnoInput(valor: string): string {
+  return valor.replace(/\D/g, '').slice(0, 4);
+}
+
+function normalizarAlunoCarregado(aluno: Partial<Aluno> & Pick<Aluno, 'id' | 'nome'>): Aluno {
+  return {
+    id: aluno.id,
+    nome: aluno.nome ?? '',
+    cpf: aluno.cpf ?? '',
+    email: aluno.email,
+    dataCriacao: aluno.dataCriacao ?? '',
+    dataAtualizacao: aluno.dataAtualizacao ?? ''
+  };
+}
+
+function normalizarTurmaCarregada(turma: Partial<Turma> & Pick<Turma, 'id' | 'nome'>): Turma {
+  return {
+    id: turma.id,
+    nome: turma.nome ?? '',
+    descricao: turma.descricao,
+    ano: typeof turma.ano === 'number' ? turma.ano : ANO_ATUAL,
+    semestre: turma.semestre === 2 ? 2 : 1,
+    alunoIds: Array.isArray(turma.alunoIds) ? turma.alunoIds : [],
+    dataCriacao: turma.dataCriacao ?? '',
+    dataAtualizacao: turma.dataAtualizacao ?? ''
+  };
+}
 
 function App() {
   const [paginaAtual, setPaginaAtual] = useState<Pagina>('alunos');
   const [alunos, setAlunos] = useState<Aluno[]>([]);
   const [turmas, setTurmas] = useState<Turma[]>([]);
   const [alunoForm, setAlunoForm] = useState<AlunoFormState>({ nome: '', cpf: '', email: '' });
-  const [turmaForm, setTurmaForm] = useState<TurmaFormState>({ nome: '', descricao: '', ano: '', semestre: '1' });
+  const [turmaForm, setTurmaForm] = useState<TurmaFormState>(criarFormularioTurmaInicial());
   const [editingAlunoId, setEditingAlunoId] = useState<string | null>(null);
   const [editingTurmaId, setEditingTurmaId] = useState<string | null>(null);
   const [alunosPorTurma, setAlunosPorTurma] = useState<Record<string, Aluno[]>>({});
@@ -95,8 +172,8 @@ function App() {
         throw new Error('Falha ao listar alunos.');
       }
 
-      const data = (await response.json()) as Aluno[];
-      setAlunos(data);
+      const data = (await response.json()) as Array<Partial<Aluno> & Pick<Aluno, 'id' | 'nome'>>;
+      setAlunos(data.map(normalizarAlunoCarregado));
     } catch (error) {
       setErroAlunos((error as Error).message);
     } finally {
@@ -128,11 +205,12 @@ function App() {
         throw new Error('Falha ao listar turmas.');
       }
 
-      const data = (await response.json()) as Turma[];
-      setTurmas(data);
+      const data = (await response.json()) as Array<Partial<Turma> & Pick<Turma, 'id' | 'nome'>>;
+      const turmasNormalizadas = data.map(normalizarTurmaCarregada);
+      setTurmas(turmasNormalizadas);
 
       const detalhes = await Promise.all(
-        data.map(async (turma) => {
+        turmasNormalizadas.map(async (turma) => {
           const detalheResponse = await fetch(`${TURMA_API_BASE}/${turma.id}/avaliacoes`);
           if (!detalheResponse.ok) {
             throw new Error('Falha ao carregar avaliações da turma.');
@@ -141,7 +219,7 @@ function App() {
           const detalhe = (await detalheResponse.json()) as TurmaComAvaliacoesResponse;
           return {
             turmaId: turma.id,
-            alunos: detalhe.alunos,
+            alunos: (detalhe.alunos ?? []).map(normalizarAlunoCarregado),
             avaliacoes: detalhe.avaliacoes
           };
         })
@@ -204,7 +282,7 @@ function App() {
   }
 
   function limparFormularioTurma(): void {
-    setTurmaForm({ nome: '', descricao: '', ano: '', semestre: '1' });
+    setTurmaForm(criarFormularioTurmaInicial());
     setEditingTurmaId(null);
   }
 
@@ -403,7 +481,13 @@ function App() {
 
   function renderTurmaCards(modo: 'matriculas' | 'avaliacoes'): JSX.Element {
     return (
-      <div className="turmas-vinculos">
+      <div
+        className={
+          modo === 'avaliacoes'
+            ? 'turmas-vinculos turmas-vinculos-avaliacoes'
+            : 'turmas-vinculos turmas-vinculos-matriculas'
+        }
+      >
         {turmas.map((turma) => {
           const disponiveis = obterAlunosDisponiveis(turma.id);
           const alunosMatriculados = alunosPorTurma[turma.id] ?? [];
@@ -418,9 +502,14 @@ function App() {
                   </p>
                 </div>
                 {modo === 'matriculas' && (
-                  <button type="button" className="secondary" onClick={() => iniciarEdicaoTurma(turma)}>
-                    Editar turma
-                  </button>
+                  <div className="card-actions">
+                    <button type="button" className="secondary" onClick={() => iniciarEdicaoTurma(turma)}>
+                      Editar turma
+                    </button>
+                    <button type="button" className="danger" onClick={() => void removerTurma(turma.id)}>
+                      Remover turma
+                    </button>
+                  </div>
                 )}
               </div>
 
@@ -434,9 +523,9 @@ function App() {
                       onChange={(event) => atualizarAlunoSelecionadoTurma(turma.id, event.target.value)}
                     >
                       <option value="">Selecione um aluno</option>
-                      {disponiveis.map((aluno) => (
+                          {disponiveis.map((aluno) => (
                         <option key={aluno.id} value={aluno.id}>
-                          {aluno.nome} - {aluno.cpf}
+                          {aluno.nome} - {formatarCpf(aluno.cpf)}
                         </option>
                       ))}
                     </select>
@@ -450,7 +539,7 @@ function App() {
                       <li key={`${turma.id}-${aluno.id}`}>
                         <div>
                           <strong>{aluno.nome}</strong>
-                          <span>{aluno.cpf}</span>
+                          <span>{formatarCpf(aluno.cpf)}</span>
                         </div>
                         <button
                           type="button"
@@ -491,7 +580,7 @@ function App() {
                           {alunosMatriculados.map((aluno) => (
                             <tr key={`linha-${turma.id}-${aluno.id}`}>
                               <td>{aluno.nome}</td>
-                              <td>{aluno.cpf}</td>
+                              <td>{formatarCpf(aluno.cpf)}</td>
                               {metas.map((meta) => (
                                 <td key={`celula-${turma.id}-${aluno.id}-${meta.id}`}>
                                   <div className="avaliacao-celula">
@@ -581,7 +670,9 @@ function App() {
               Nome
               <input
                 value={alunoForm.nome}
-                onChange={(event) => setAlunoForm((previous) => ({ ...previous, nome: event.target.value }))}
+                onChange={(event) =>
+                  setAlunoForm((previous) => ({ ...previous, nome: normalizarNomeInput(event.target.value) }))
+                }
                 placeholder="Nome do aluno"
                 required
               />
@@ -591,8 +682,10 @@ function App() {
               CPF
               <input
                 value={alunoForm.cpf}
-                onChange={(event) => setAlunoForm((previous) => ({ ...previous, cpf: event.target.value }))}
-                placeholder="00000000000"
+                onChange={(event) =>
+                  setAlunoForm((previous) => ({ ...previous, cpf: normalizarCpfInput(event.target.value) }))
+                }
+                placeholder="000.000.000-00"
                 required
               />
             </label>
@@ -601,7 +694,9 @@ function App() {
               Email
               <input
                 value={alunoForm.email}
-                onChange={(event) => setAlunoForm((previous) => ({ ...previous, email: event.target.value }))}
+                onChange={(event) =>
+                  setAlunoForm((previous) => ({ ...previous, email: normalizarEmailInput(event.target.value) }))
+                }
                 placeholder="email@exemplo.com"
                 type="email"
               />
@@ -635,7 +730,7 @@ function App() {
                 {alunos.map((aluno) => (
                   <tr key={aluno.id}>
                     <td>{aluno.nome}</td>
-                    <td>{aluno.cpf}</td>
+                    <td>{formatarCpf(aluno.cpf)}</td>
                     <td>{aluno.email || '-'}</td>
                     <td className="row-actions">
                       <button type="button" className="secondary" onClick={() => iniciarEdicaoAluno(aluno)}>
@@ -691,9 +786,11 @@ function App() {
               Ano
               <input
                 value={turmaForm.ano}
-                onChange={(event) => setTurmaForm((previous) => ({ ...previous, ano: event.target.value }))}
-                placeholder="2026"
-                type="number"
+                onChange={(event) =>
+                  setTurmaForm((previous) => ({ ...previous, ano: normalizarAnoInput(event.target.value) }))
+                }
+                placeholder={String(ANO_ATUAL)}
+                inputMode="numeric"
                 required
               />
             </label>
@@ -724,44 +821,7 @@ function App() {
           {carregandoTurmas ? (
             <p>Carregando turmas...</p>
           ) : (
-            <>
-              <table>
-                <thead>
-                  <tr>
-                    <th>Tópico</th>
-                    <th>Ano</th>
-                    <th>Semestre</th>
-                    <th>Matriculados</th>
-                    <th>Ações</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {turmas.map((turma) => (
-                    <tr key={turma.id}>
-                      <td>{turma.nome}</td>
-                      <td>{turma.ano}</td>
-                      <td>{turma.semestre}</td>
-                      <td>{(alunosPorTurma[turma.id] ?? []).length}</td>
-                      <td className="row-actions">
-                        <button type="button" className="secondary" onClick={() => iniciarEdicaoTurma(turma)}>
-                          Editar
-                        </button>
-                        <button type="button" className="danger" onClick={() => void removerTurma(turma.id)}>
-                          Remover
-                        </button>
-                      </td>
-                    </tr>
-                  ))}
-                  {turmas.length === 0 && (
-                    <tr>
-                      <td colSpan={5}>Nenhuma turma cadastrada.</td>
-                    </tr>
-                  )}
-                </tbody>
-              </table>
-
-              {renderTurmaCards('matriculas')}
-            </>
+            renderTurmaCards('matriculas')
           )}
         </section>
       )}
