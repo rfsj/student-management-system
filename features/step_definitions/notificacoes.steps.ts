@@ -289,6 +289,16 @@ Given('existe um aluno com duas turmas para notificacao com email {string}', asy
   metaId = await obterMetaId();
 });
 
+Given('existe um aluno com avaliacao em duas turmas para notificacao com email {string}', async function (email: string) {
+  alunoId = await criarAluno('Aluno Notificacao Misto', email);
+  turmaAId = await criarTurma('Turma Notificacao Misto A');
+  turmaBId = await criarTurma('Turma Notificacao Misto B');
+  await matricularAluno(turmaAId, alunoId);
+  await matricularAluno(turmaBId, alunoId);
+  metaId = await obterMetaId();
+  avaliacaoId = await criarAvaliacao(turmaAId, alunoId, metaId, 'MANA');
+});
+
 Given('existe apenas um aluno para notificacao sem alteracoes', async function () {
   alunoId = await criarAluno('Aluno Sem Alteracao Notificacao', 'sem.alteracao@escola.com');
 });
@@ -307,6 +317,20 @@ When('eu altero a avaliacao para {string} no fluxo de notificacao', async functi
   }
 });
 
+When('eu altero a avaliacao da turma A para {string} no fluxo de notificacao', async function (conceito: string) {
+  if (!avaliacaoId) {
+    throw new Error('Avaliacao da turma A nao preparada para alteracao no fluxo de notificacao.');
+  }
+
+  try {
+    const response = await requestJson('PUT', `/avaliacoes/${avaliacaoId}`, { conceito });
+    lastStatus = response.status;
+    lastBody = response.body;
+  } catch (error) {
+    lastError = error as Error;
+  }
+});
+
 When('eu lanço avaliacoes nas duas turmas para notificacao', async function () {
   if (!alunoId || !turmaAId || !turmaBId || !metaId) {
     throw new Error('Contexto incompleto para notificacao em duas turmas.');
@@ -314,6 +338,25 @@ When('eu lanço avaliacoes nas duas turmas para notificacao', async function () 
 
   await criarAvaliacao(turmaAId, alunoId, metaId, 'MPA');
   await criarAvaliacao(turmaBId, alunoId, metaId, 'MA');
+});
+
+When('eu lanço uma avaliacao na turma B para notificacao com conceito {string}', async function (conceito: string) {
+  if (!alunoId || !turmaBId || !metaId) {
+    throw new Error('Contexto incompleto para lancar avaliacao na turma B.');
+  }
+
+  try {
+    const response = await requestJson('POST', '/avaliacoes', {
+      turmaId: turmaBId,
+      alunoId,
+      metaId,
+      conceito
+    });
+    lastStatus = response.status;
+    lastBody = response.body;
+  } catch (error) {
+    lastError = error as Error;
+  }
 });
 
 When('eu executo o dispatch diario de notificacoes', async function () {

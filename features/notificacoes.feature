@@ -24,6 +24,15 @@ Feature: Aceitacao do envio de email consolidado diario
     And eu executo o dispatch diario de notificacoes
     Then o email enviado deve conter alteracoes de 2 turmas
 
+  Scenario: Lancamento e alteracao no mesmo dia geram um unico email consolidado
+    Given o ambiente de notificacoes esta limpo
+    And existe um aluno com avaliacao em duas turmas para notificacao com email "aluno.misto@escola.com"
+    When eu altero a avaliacao da turma A para "MPA" no fluxo de notificacao
+    And eu lanço uma avaliacao na turma B para notificacao com conceito "MA"
+    And eu executo o dispatch diario de notificacoes
+    Then deve existir apenas 1 email enviado para o aluno no dia atual
+    And o email enviado deve conter alteracoes de 2 turmas
+
   Scenario: Falha de envio nao marca como enviado
     Given o ambiente de notificacoes esta limpo
     And existe uma avaliacao base para notificacao com email "falha.envio@escola.com"
