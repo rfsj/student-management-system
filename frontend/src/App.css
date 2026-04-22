@@ -85,6 +85,14 @@ h1 {
   margin-bottom: 14px;
 }
 
+.search-bar {
+  margin-bottom: 14px;
+}
+
+.search-bar input {
+  width: 100%;
+}
+
 .panel h2 {
   margin: 0 0 6px;
 }
@@ -192,6 +200,11 @@ th {
   border-radius: 18px;
   padding: 16px;
   background: linear-gradient(180deg, #fffdf9 0%, #f9f5ee 100%);
+}
+
+.turma-vinculo-card-empty {
+  text-align: center;
+  color: #526071;
 }
 
 .turma-card-header {

@@ -120,6 +120,10 @@ function normalizarAnoInput(valor: string): string {
   return valor.replace(/\D/g, '').slice(0, 4);
 }
 
+function ordenarPorNome<T extends { nome: string }>(itens: T[]): T[] {
+  return [...itens].sort((a, b) => a.nome.localeCompare(b.nome, 'pt-BR', { sensitivity: 'base' }));
+}
+
 function normalizarAlunoCarregado(aluno: Partial<Aluno> & Pick<Aluno, 'id' | 'nome'>): Aluno {
   return {
     id: aluno.id,
@@ -161,6 +165,9 @@ function App() {
   const [erroTurmas, setErroTurmas] = useState<string>('');
   const [carregandoAlunos, setCarregandoAlunos] = useState<boolean>(false);
   const [carregandoTurmas, setCarregandoTurmas] = useState<boolean>(false);
+  const [pesquisaAlunos, setPesquisaAlunos] = useState<string>('');
+  const [pesquisaTurmas, setPesquisaTurmas] = useState<string>('');
+  const [pesquisaAvaliacoes, setPesquisaAvaliacoes] = useState<string>('');
 
   async function carregarAlunos(): Promise<void> {
     setCarregandoAlunos(true);
@@ -406,7 +413,7 @@ function App() {
 
   function obterAlunosDisponiveis(turmaId: string): Aluno[] {
     const matriculados = new Set((alunosPorTurma[turmaId] ?? []).map((aluno) => aluno.id));
-    return alunos.filter((aluno) => !matriculados.has(aluno.id));
+    return ordenarPorNome(alunos.filter((aluno) => !matriculados.has(aluno.id)));
   }
 
   async function matricularAlunoNaTurma(turmaId: string): Promise<void> {
@@ -479,7 +486,46 @@ function App() {
     }
   }
 
-  function renderTurmaCards(modo: 'matriculas' | 'avaliacoes'): JSX.Element {
+  const termoPesquisaAlunos = pesquisaAlunos.trim().toLowerCase();
+  const termoPesquisaTurmas = pesquisaTurmas.trim().toLowerCase();
+  const termoPesquisaAvaliacoes = pesquisaAvaliacoes.trim().toLowerCase();
+
+  const alunosOrdenados = ordenarPorNome(alunos);
+  const alunosFiltrados = alunosOrdenados.filter((aluno) => {
+    if (!termoPesquisaAlunos) {
+      return true;
+    }
+
+    return [aluno.nome, aluno.cpf, aluno.email ?? ''].some((valor) => valor.toLowerCase().includes(termoPesquisaAlunos));
+  });
+
+  const turmasOrdenadas = ordenarPorNome(turmas);
+  const turmasFiltradas = turmasOrdenadas.filter((turma) => {
+    if (!termoPesquisaTurmas) {
+      return true;
+    }
+
+    return [turma.nome, turma.descricao ?? '', String(turma.ano), String(turma.semestre)].some((valor) =>
+      valor.toLowerCase().includes(termoPesquisaTurmas)
+    );
+  });
+
+  const turmasFiltradasAvaliacoes = turmasOrdenadas.filter((turma) => {
+    if (!termoPesquisaAvaliacoes) {
+      return true;
+    }
+
+    const alunosDaTurma = ordenarPorNome(alunosPorTurma[turma.id] ?? []);
+    const combinados = [
+      turma.nome,
+      turma.descricao ?? '',
+      ...alunosDaTurma.flatMap((aluno) => [aluno.nome, aluno.cpf, aluno.email ?? ''])
+    ];
+
+    return combinados.some((valor) => valor.toLowerCase().includes(termoPesquisaAvaliacoes));
+  });
+
+  function renderTurmaCards(modo: 'matriculas' | 'avaliacoes', turmasVisiveis: Turma[]): JSX.Element {
     return (
       <div
         className={
@@ -488,9 +534,9 @@ function App() {
             : 'turmas-vinculos turmas-vinculos-matriculas'
         }
       >
-        {turmas.map((turma) => {
+        {turmasVisiveis.map((turma) => {
           const disponiveis = obterAlunosDisponiveis(turma.id);
-          const alunosMatriculados = alunosPorTurma[turma.id] ?? [];
+          const alunosMatriculados = ordenarPorNome(alunosPorTurma[turma.id] ?? []);
 
           return (
             <article className="turma-vinculo-card" key={`${modo}-${turma.id}`}>
@@ -616,6 +662,12 @@ function App() {
             </article>
           );
         })}
+
+        {turmasVisiveis.length === 0 && (
+          <article className="turma-vinculo-card turma-vinculo-card-empty">
+            <p>Nenhuma turma encontrada para o filtro informado.</p>
+          </article>
+        )}
       </div>
     );
   }
@@ -663,6 +715,15 @@ function App() {
               <h2>Alunos</h2>
               <p>Cadastre alunos com nome, CPF e email.</p>
             </div>
+          </div>
+
+          <div className="search-bar">
+            <input
+              value={pesquisaAlunos}
+              onChange={(event) => setPesquisaAlunos(event.target.value)}
+              placeholder="Pesquisar por nome, CPF ou email"
+              type="search"
+            />
           </div>
 
           <form className="form" onSubmit={(event) => void salvarAluno(event)}>
@@ -727,7 +788,7 @@ function App() {
                 </tr>
               </thead>
               <tbody>
-                {alunos.map((aluno) => (
+                {alunosFiltrados.map((aluno) => (
                   <tr key={aluno.id}>
                     <td>{aluno.nome}</td>
                     <td>{formatarCpf(aluno.cpf)}</td>
@@ -742,7 +803,7 @@ function App() {
                     </td>
                   </tr>
                 ))}
-                {alunos.length === 0 && (
+                {alunosFiltrados.length === 0 && (
                   <tr>
                     <td colSpan={4}>Nenhum aluno cadastrado.</td>
                   </tr>
@@ -760,6 +821,15 @@ function App() {
               <h2>Turmas</h2>
               <p>Gerencie o tópico da turma, o ano, o semestre e as matrículas.</p>
             </div>
+          </div>
+
+          <div className="search-bar">
+            <input
+              value={pesquisaTurmas}
+              onChange={(event) => setPesquisaTurmas(event.target.value)}
+              placeholder="Pesquisar por tópico, descrição, ano ou semestre"
+              type="search"
+            />
           </div>
 
           <form className="form" onSubmit={(event) => void salvarTurma(event)}>
@@ -821,7 +891,7 @@ function App() {
           {carregandoTurmas ? (
             <p>Carregando turmas...</p>
           ) : (
-            renderTurmaCards('matriculas')
+            renderTurmaCards('matriculas', turmasFiltradas)
           )}
         </section>
       )}
@@ -835,9 +905,18 @@ function App() {
             </div>
           </div>
 
+          <div className="search-bar">
+            <input
+              value={pesquisaAvaliacoes}
+              onChange={(event) => setPesquisaAvaliacoes(event.target.value)}
+              placeholder="Pesquisar por turma, aluno ou CPF"
+              type="search"
+            />
+          </div>
+
           {erroTurmas && <p className="erro">{erroTurmas}</p>}
 
-          {carregandoTurmas ? <p>Carregando avaliações...</p> : renderTurmaCards('avaliacoes')}
+          {carregandoTurmas ? <p>Carregando avaliações...</p> : renderTurmaCards('avaliacoes', turmasFiltradasAvaliacoes)}
         </section>
       )}
     </main>
